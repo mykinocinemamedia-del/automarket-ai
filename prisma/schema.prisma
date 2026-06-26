@@ -1,0 +1,80 @@
+// AutoMarket AI - Prisma Schema
+// Personal 1-man marketing automation hub
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model BrandProfile {
+  id              String   @id @default(cuid())
+  name            String
+  tagline         String?
+  industry        String?
+  targetAudience  String?
+  brandVoice      String?
+  toneKeywords    String?
+  primaryColor    String?
+  logoUrl         String?
+  hashtagSets     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ContentPost {
+  id           String   @id @default(cuid())
+  title        String
+  body         String
+  platform     String   // instagram, facebook, linkedin, twitter, tiktok
+  status       String   @default("draft") // draft, scheduled, published, failed
+  hashtags     String?
+  scheduledAt  DateTime?
+  publishedAt  DateTime?
+  brandId      String?
+  assetUrls    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([platform])
+  @@index([scheduledAt])
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // image, video, audio, document
+  url       String
+  tags      String?
+  brandId   String?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+}
+
+model AutomationRule {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  trigger      String   // daily, weekly, on_event, content_added
+  action       String   // generate_post, repurpose, schedule
+  config       String   // JSON string with rule config
+  active       Boolean  @default(true)
+  lastRunAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AnalyticsSnapshot {
+  id           String   @id @default(cuid())
+  platform     String
+  metric       String   // reach, engagement, followers, clicks
+  value        Float
+  recordedAt   DateTime @default(now())
+
+  @@index([platform, metric])
+}
