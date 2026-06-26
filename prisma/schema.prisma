@@ -1,13 +1,15 @@
 // AutoMarket AI - Prisma Schema
 // Personal 1-man marketing automation hub
+// Supports PostgreSQL (Supabase) for production, SQLite for local dev
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Supabase direct connection (for migrations)
 }
 
 model BrandProfile {
@@ -23,6 +25,11 @@ model BrandProfile {
   hashtagSets     String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  posts           ContentPost[]
+  assets          Asset[]
+
+  @@map("brand_profiles")
 }
 
 model ContentPost {
@@ -39,9 +46,12 @@ model ContentPost {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  brand        BrandProfile? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
   @@index([status])
   @@index([platform])
   @@index([scheduledAt])
+  @@map("content_posts")
 }
 
 model Asset {
@@ -53,7 +63,10 @@ model Asset {
   brandId   String?
   createdAt DateTime @default(now())
 
+  brand     BrandProfile? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
   @@index([type])
+  @@map("assets")
 }
 
 model AutomationRule {
@@ -67,6 +80,8 @@ model AutomationRule {
   lastRunAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@map("automation_rules")
 }
 
 model AnalyticsSnapshot {
@@ -77,4 +92,5 @@ model AnalyticsSnapshot {
   recordedAt   DateTime @default(now())
 
   @@index([platform, metric])
+  @@map("analytics_snapshots")
 }

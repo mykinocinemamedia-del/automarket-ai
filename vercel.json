@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "bun run db:generate && next build",
+  "installCommand": "bun install",
+  "devCommand": "next dev",
+  "regions": ["sin1"],
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "https://your-app.vercel.app"
+  }
+}
