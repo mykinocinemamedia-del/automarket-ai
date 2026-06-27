@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 export type SectionId =
   | 'dashboard'
+  | 'agent'
   | 'studio'
   | 'brand'
   | 'calendar'
