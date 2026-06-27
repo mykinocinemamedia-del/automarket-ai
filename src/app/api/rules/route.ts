@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase, TABLES } from '@/lib/supabase'
 
 export async function GET() {
-  const rules = await db.automationRule.findMany({ orderBy: { createdAt: 'desc' } })
-  return NextResponse.json({ rules })
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.AUTOMATION_RULES)
+      .select('*')
+      .order('createdAt', { ascending: false })
+    if (error) throw error
+    return NextResponse.json({ rules: data || [] })
+  } catch (e: any) {
+    console.error('rules GET error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -15,21 +24,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'name, trigger, action are required' }, { status: 400 })
     }
 
-    const rule = await db.automationRule.create({
-      data: {
+    const { data, error } = await supabase
+      .from(TABLES.AUTOMATION_RULES)
+      .insert({
         name,
         description: description || null,
         trigger,
         action,
         config: config || '{}',
         active: active ?? true,
-      },
-    })
+      })
+      .select()
+      .single()
 
-    return NextResponse.json({ rule })
+    if (error) throw error
+    return NextResponse.json({ rule: data })
   } catch (e: any) {
-    console.error('rule create error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to create rule' }, { status: 500 })
+    console.error('rules POST error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }
 
@@ -40,19 +52,22 @@ export async function PATCH(req: NextRequest) {
 
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
-    const rule = await db.automationRule.update({
-      where: { id },
-      data: {
-        ...data,
-        description: data.description ?? null,
-        config: data.config ?? undefined,
-      },
-    })
+    const updateData: any = { ...data, updatedAt: new Date().toISOString() }
+    if ('description' in data) updateData.description = data.description ?? null
+    if ('config' in data) updateData.config = data.config ?? undefined
 
-    return NextResponse.json({ rule })
+    const { data: updated, error } = await supabase
+      .from(TABLES.AUTOMATION_RULES)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return NextResponse.json({ rule: updated })
   } catch (e: any) {
-    console.error('rule update error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to update rule' }, { status: 500 })
+    console.error('rules PATCH error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }
 
@@ -62,10 +77,12 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
-    await db.automationRule.delete({ where: { id } })
+    const { error } = await supabase.from(TABLES.AUTOMATION_RULES).delete().eq('id', id)
+    if (error) throw error
+
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('rule delete error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to delete rule' }, { status: 500 })
+    console.error('rules DELETE error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }

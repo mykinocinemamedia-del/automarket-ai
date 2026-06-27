@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase, TABLES } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const status = searchParams.get('status')
-  const platform = searchParams.get('platform')
-  const brandId = searchParams.get('brandId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const status = searchParams.get('status')
+    const platform = searchParams.get('platform')
+    const brandId = searchParams.get('brandId')
 
-  const where: any = {}
-  if (status) where.status = status
-  if (platform) where.platform = platform
-  if (brandId) where.brandId = brandId
+    let query = supabase.from(TABLES.CONTENT_POSTS).select('*')
+    if (status) query = query.eq('status', status)
+    if (platform) query = query.eq('platform', platform)
+    if (brandId) query = query.eq('brandId', brandId)
+    query = query.order('createdAt', { ascending: false }).limit(200)
 
-  const posts = await db.contentPost.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-  })
+    const { data, error } = await query
+    if (error) throw error
 
-  return NextResponse.json({ posts })
+    return NextResponse.json({ posts: data || [] })
+  } catch (e: any) {
+    console.error('posts GET error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -30,23 +33,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'title, body, platform are required' }, { status: 400 })
     }
 
-    const post = await db.contentPost.create({
-      data: {
+    const { data, error } = await supabase
+      .from(TABLES.CONTENT_POSTS)
+      .insert({
         title,
         body: postBody,
         platform,
         status: status || 'draft',
         hashtags: hashtags || null,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         brandId: brandId || null,
         assetUrls: assetUrls || null,
-      },
-    })
+      })
+      .select()
+      .single()
 
-    return NextResponse.json({ post })
+    if (error) throw error
+    return NextResponse.json({ post: data })
   } catch (e: any) {
-    console.error('post create error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to create post' }, { status: 500 })
+    console.error('posts POST error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }
 
@@ -59,19 +65,22 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
 
-    const updateData: any = { ...data }
-    if (data.scheduledAt) updateData.scheduledAt = new Date(data.scheduledAt)
-    if (data.publishedAt) updateData.publishedAt = new Date(data.publishedAt)
+    const updateData: any = { ...data, updatedAt: new Date().toISOString() }
+    if (data.scheduledAt) updateData.scheduledAt = new Date(data.scheduledAt).toISOString()
+    if (data.publishedAt) updateData.publishedAt = new Date(data.publishedAt).toISOString()
 
-    const post = await db.contentPost.update({
-      where: { id },
-      data: updateData,
-    })
+    const { data: updated, error } = await supabase
+      .from(TABLES.CONTENT_POSTS)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
 
-    return NextResponse.json({ post })
+    if (error) throw error
+    return NextResponse.json({ post: updated })
   } catch (e: any) {
-    console.error('post update error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to update post' }, { status: 500 })
+    console.error('posts PATCH error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }
 
@@ -84,11 +93,12 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
 
-    await db.contentPost.delete({ where: { id } })
+    const { error } = await supabase.from(TABLES.CONTENT_POSTS).delete().eq('id', id)
+    if (error) throw error
 
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('post delete error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to delete post' }, { status: 500 })
+    console.error('posts DELETE error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }

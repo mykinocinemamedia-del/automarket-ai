@@ -1,11 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextResponse } from 'next/server'
+import { supabase, TABLES } from '@/lib/supabase'
 
 export async function GET() {
-  const snapshots = await db.analyticsSnapshot.findMany({
-    orderBy: { recordedAt: 'desc' },
-    take: 1000,
-  })
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.ANALYTICS_SNAPSHOTS)
+      .select('*')
+      .order('recordedAt', { ascending: false })
+      .limit(1000)
 
-  return NextResponse.json({ snapshots })
+    if (error) throw error
+    return NextResponse.json({ snapshots: data || [] })
+  } catch (e: any) {
+    console.error('analytics raw GET error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
+  }
 }

@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase, TABLES, type BrandProfile } from '@/lib/supabase'
 
 export async function GET() {
-  const brands = await db.brandProfile.findMany({ orderBy: { createdAt: 'desc' } })
-  return NextResponse.json({ brands })
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.BRAND_PROFILES)
+      .select('*')
+      .order('createdAt', { ascending: false })
+
+    if (error) throw error
+    return NextResponse.json({ brands: data || [] })
+  } catch (e: any) {
+    console.error('brand GET error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -15,8 +25,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
     }
 
-    const brand = await db.brandProfile.create({
-      data: {
+    const { data, error } = await supabase
+      .from(TABLES.BRAND_PROFILES)
+      .insert({
         name,
         tagline: tagline || null,
         industry: industry || null,
@@ -26,13 +37,15 @@ export async function POST(req: NextRequest) {
         primaryColor: primaryColor || null,
         logoUrl: logoUrl || null,
         hashtagSets: hashtagSets || null,
-      },
-    })
+      })
+      .select()
+      .single()
 
-    return NextResponse.json({ brand })
+    if (error) throw error
+    return NextResponse.json({ brand: data })
   } catch (e: any) {
-    console.error('brand create error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to create brand' }, { status: 500 })
+    console.error('brand POST error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }
 
@@ -45,24 +58,27 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
 
-    const brand = await db.brandProfile.update({
-      where: { id },
-      data: {
-        ...data,
-        tagline: data.tagline ?? null,
-        industry: data.industry ?? null,
-        targetAudience: data.targetAudience ?? null,
-        brandVoice: data.brandVoice ?? null,
-        toneKeywords: data.toneKeywords ?? null,
-        primaryColor: data.primaryColor ?? null,
-        logoUrl: data.logoUrl ?? null,
-        hashtagSets: data.hashtagSets ?? null,
-      },
-    })
+    const updateData: any = { ...data, updatedAt: new Date().toISOString() }
+    if ('tagline' in data) updateData.tagline = data.tagline ?? null
+    if ('industry' in data) updateData.industry = data.industry ?? null
+    if ('targetAudience' in data) updateData.targetAudience = data.targetAudience ?? null
+    if ('brandVoice' in data) updateData.brandVoice = data.brandVoice ?? null
+    if ('toneKeywords' in data) updateData.toneKeywords = data.toneKeywords ?? null
+    if ('primaryColor' in data) updateData.primaryColor = data.primaryColor ?? null
+    if ('logoUrl' in data) updateData.logoUrl = data.logoUrl ?? null
+    if ('hashtagSets' in data) updateData.hashtagSets = data.hashtagSets ?? null
 
-    return NextResponse.json({ brand })
+    const { data: updated, error } = await supabase
+      .from(TABLES.BRAND_PROFILES)
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return NextResponse.json({ brand: updated })
   } catch (e: any) {
-    console.error('brand update error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to update brand' }, { status: 500 })
+    console.error('brand PATCH error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }

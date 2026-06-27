@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase, TABLES } from '@/lib/supabase'
 
 export async function GET() {
-  const assets = await db.asset.findMany({ orderBy: { createdAt: 'desc' }, take: 100 })
-  return NextResponse.json({ assets })
+  try {
+    const { data, error } = await supabase
+      .from(TABLES.ASSETS)
+      .select('*')
+      .order('createdAt', { ascending: false })
+      .limit(100)
+    if (error) throw error
+    return NextResponse.json({ assets: data || [] })
+  } catch (e: any) {
+    console.error('assets GET error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -15,20 +25,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'name, type, url are required' }, { status: 400 })
     }
 
-    const asset = await db.asset.create({
-      data: {
+    const { data, error } = await supabase
+      .from(TABLES.ASSETS)
+      .insert({
         name,
         type,
         url,
         tags: tags || null,
         brandId: brandId || null,
-      },
-    })
+      })
+      .select()
+      .single()
 
-    return NextResponse.json({ asset })
+    if (error) throw error
+    return NextResponse.json({ asset: data })
   } catch (e: any) {
-    console.error('asset create error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to create asset' }, { status: 500 })
+    console.error('assets POST error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }
 
@@ -38,10 +51,12 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
-    await db.asset.delete({ where: { id } })
+    const { error } = await supabase.from(TABLES.ASSETS).delete().eq('id', id)
+    if (error) throw error
+
     return NextResponse.json({ success: true })
   } catch (e: any) {
-    console.error('asset delete error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to delete asset' }, { status: 500 })
+    console.error('assets DELETE error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }

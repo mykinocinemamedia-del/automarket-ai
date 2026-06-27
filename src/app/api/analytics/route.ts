@@ -1,29 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase, TABLES } from '@/lib/supabase'
 
 export async function GET() {
-  const snapshots = await db.analyticsSnapshot.findMany({
-    orderBy: { recordedAt: 'desc' },
-    take: 500,
-  })
+  try {
+    const { data: snapshots, error } = await supabase
+      .from(TABLES.ANALYTICS_SNAPSHOTS)
+      .select('*')
+      .order('recordedAt', { ascending: false })
+      .limit(1000)
 
-  // Aggregate by platform + metric
-  const byPlatform: Record<string, Record<string, number>> = {}
-  for (const s of snapshots) {
-    if (!byPlatform[s.platform]) byPlatform[s.platform] = {}
-    byPlatform[s.platform][s.metric] = (byPlatform[s.platform][s.metric] || 0) + s.value
-  }
+    if (error) throw error
 
-  // Get most recent per metric per platform (latest)
-  const latest: Record<string, Record<string, { value: number; recordedAt: string }>> = {}
-  for (const s of snapshots) {
-    if (!latest[s.platform]) latest[s.platform] = {}
-    if (!latest[s.platform][s.metric] || new Date(s.recordedAt) > new Date(latest[s.platform][s.metric].recordedAt)) {
-      latest[s.platform][s.metric] = { value: s.value, recordedAt: s.recordedAt.toISOString() }
+    // Aggregate by platform + metric
+    const byPlatform: Record<string, Record<string, number>> = {}
+    const latest: Record<string, Record<string, { value: number; recordedAt: string }>> = {}
+
+    for (const s of snapshots || []) {
+      if (!byPlatform[s.platform]) byPlatform[s.platform] = {}
+      byPlatform[s.platform][s.metric] = (byPlatform[s.platform][s.metric] || 0) + s.value
+
+      if (!latest[s.platform]) latest[s.platform] = {}
+      if (!latest[s.platform][s.metric] || new Date(s.recordedAt) > new Date(latest[s.platform][s.metric].recordedAt)) {
+        latest[s.platform][s.metric] = { value: s.value, recordedAt: s.recordedAt }
+      }
     }
-  }
 
-  return NextResponse.json({ byPlatform, latest, total: snapshots.length })
+    return NextResponse.json({ byPlatform, latest, total: (snapshots || []).length })
+  } catch (e: any) {
+    console.error('analytics GET error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -35,13 +41,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'platform, metric, value (number) required' }, { status: 400 })
     }
 
-    const snap = await db.analyticsSnapshot.create({
-      data: { platform, metric, value },
-    })
+    const { data, error } = await supabase
+      .from(TABLES.ANALYTICS_SNAPSHOTS)
+      .insert({ platform, metric, value })
+      .select()
+      .single()
 
-    return NextResponse.json({ snapshot: snap })
+    if (error) throw error
+    return NextResponse.json({ snapshot: data })
   } catch (e: any) {
-    console.error('analytics create error:', e)
-    return NextResponse.json({ error: e?.message || 'Failed to create analytics' }, { status: 500 })
+    console.error('analytics POST error:', e)
+    return NextResponse.json({ error: e?.message || 'Failed' }, { status: 500 })
   }
 }

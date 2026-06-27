@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase, TABLES } from '@/lib/supabase'
 import { repurposeContent } from '@/lib/ai'
 
 export async function POST(req: NextRequest) {
@@ -16,7 +16,12 @@ export async function POST(req: NextRequest) {
 
     let brandCtx = {}
     if (brandId) {
-      const brand = await db.brandProfile.findUnique({ where: { id: brandId } })
+      const { data: brand } = await supabase
+        .from(TABLES.BRAND_PROFILES)
+        .select('*')
+        .eq('id', brandId)
+        .single()
+
       if (brand) {
         brandCtx = {
           name: brand.name,
