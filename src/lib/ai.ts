@@ -1,12 +1,91 @@
-import ZAI from 'z-ai-web-dev-sdk'
+/**
+ * Google Gemini AI integration
+ *
+ * Free tier: 1,500 requests/day, 1M tokens/min
+ * Docs: https://ai.google.dev/gemini-api/docs
+ *
+ * Env vars:
+ *  - GEMINI_API_KEY (required)
+ *  - GEMINI_MODEL (optional, default: gemini-2.0-flash)
+ */
 
-let zaiInstance: any = null
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-export async function getAI() {
-  if (!zaiInstance) {
-    zaiInstance = await ZAI.create()
+if (!GEMINI_API_KEY) {
+  console.warn('[AI] GEMINI_API_KEY is not set. AI features will not work.')
+}
+
+interface GeminiResponse {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string }> }
+    finishReason?: string
+  }>
+  usageMetadata?: {
+    promptTokenCount?: number
+    candidatesTokenCount?: number
+    totalTokenCount?: number
   }
-  return zaiInstance
+  error?: { code: number; message: string; status?: string }
+}
+
+/**
+ * Low-level Gemini text generation call
+ */
+export async function callGemini(
+  prompt: string,
+  options: {
+    temperature?: number
+    maxOutputTokens?: number
+    topP?: number
+    topK?: number
+  } = {}
+): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY environment variable is not set')
+  }
+
+  const url = `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: options.temperature ?? 0.85,
+      maxOutputTokens: options.maxOutputTokens ?? 4096,
+      topP: options.topP ?? 0.95,
+      topK: options.topK ?? 40,
+    },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    ],
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    let errMsg = `Gemini API error ${res.status}`
+    try {
+      const errBody = await res.json()
+      errMsg = errBody?.error?.message || errMsg
+    } catch {}
+    throw new Error(errMsg)
+  }
+
+  const data: GeminiResponse = await res.json()
+
+  if (data.error) {
+    throw new Error(`Gemini error: ${data.error.message}`)
+  }
+
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  return text
 }
 
 export interface BrandContext {
@@ -36,7 +115,6 @@ export async function generateCaption(opts: {
   additionalInstructions?: string
   count?: number
 }): Promise<string[]> {
-  const zai = await getAI()
   const { topic, platform, brandCtx, additionalInstructions, count = 3 } = opts
 
   const platformSpecs: Record<string, string> = {
@@ -49,7 +127,7 @@ export async function generateCaption(opts: {
 
   const platformSpec = platformSpecs[platform] || platformSpecs.instagram
 
-  const systemPrompt = `You are a world-class social media copywriter. Generate ${count} distinct caption variants for the requested platform.
+  const prompt = `You are a world-class social media copywriter. Generate ${count} distinct caption variants for the requested platform.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -65,18 +143,12 @@ Rules:
 3. Use language natural to the target audience (mix English/BM if brand is Malaysian)
 4. Return ONLY the captions, separated by the literal token ===VARIANT=== on its own line
 5. No numbering, no prefixes, no explanations, no markdown
-6. Each variant starts immediately after the ===VARIANT=== separator`
+6. Each variant starts immediately after the ===VARIANT=== separator
 
-  const completion = await zai.chat.completions.create({
-    messages: [
-      { role: 'assistant', content: systemPrompt },
-      { role: 'user', content: `Generate ${count} caption variants now. Separate them with ===VARIANT=== on its own line.` },
-    ],
-    thinking: { type: 'disabled' },
-    temperature: 0.85,
-  })
+Generate ${count} caption variants now. Separate them with ===VARIANT=== on its own line.`
 
-  const raw = completion.choices[0]?.message?.content || ''
+  const raw = await callGemini(prompt, { temperature: 0.9, maxOutputTokens: 4096 })
+
   // Try multiple separators the model might use
   let parts: string[] = []
   if (raw.includes('===VARIANT===')) {
@@ -84,13 +156,10 @@ Rules:
   } else if (raw.includes('---VARIANT---')) {
     parts = raw.split(/---VARIANT---/)
   } else if (/^\s*---\s*$/m.test(raw)) {
-    // Fallback: --- on its own line
     parts = raw.split(/^\s*---\s*$/m)
   } else if (/^\s*##\s+/m.test(raw)) {
-    // Fallback: ## headers
     parts = raw.split(/^\s*##\s+/m).filter((s: string) => s.trim())
   } else if (/^\s*\d+[.)]\s+/m.test(raw)) {
-    // Fallback: numbered list 1. 2. 3.
     parts = raw.split(/^\s*\d+[.)]\s+/m).filter((s: string) => s.trim())
   } else {
     parts = [raw]
@@ -108,7 +177,6 @@ export async function generateHashtags(opts: {
   brandCtx: BrandContext
   count?: number
 }): Promise<string[]> {
-  const zai = await getAI()
   const { topic, platform, brandCtx, count = 15 } = opts
 
   const limits: Record<string, number> = {
@@ -121,7 +189,7 @@ export async function generateHashtags(opts: {
   const maxForPlatform = limits[platform] || 10
   const finalCount = Math.min(count, maxForPlatform)
 
-  const systemPrompt = `You are a hashtag strategist. Suggest ${finalCount} high-quality hashtags for ${platform}.
+  const prompt = `You are a hashtag strategist. Suggest ${finalCount} high-quality hashtags for ${platform}.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -136,18 +204,12 @@ Mix strategy:
 Rules:
 1. Return ONLY hashtags, one per line, starting with #
 2. No explanations, no numbering
-3. No duplicates`
+3. No duplicates
 
-  const completion = await zai.chat.completions.create({
-    messages: [
-      { role: 'assistant', content: systemPrompt },
-      { role: 'user', content: `Generate ${finalCount} hashtags now.` },
-    ],
-    thinking: { type: 'disabled' },
-    temperature: 0.7,
-  })
+Generate ${finalCount} hashtags now.`
 
-  const raw = completion.choices[0]?.message?.content || ''
+  const raw = await callGemini(prompt, { temperature: 0.7, maxOutputTokens: 1024 })
+
   return raw
     .split('\n')
     .map((s: string) => s.trim())
@@ -160,7 +222,6 @@ export async function repurposeContent(opts: {
   targetPlatforms: string[]
   brandCtx: BrandContext
 }): Promise<Record<string, string>> {
-  const zai = await getAI()
   const { sourceContent, targetPlatforms, brandCtx } = opts
 
   const platformSpecs: Record<string, string> = {
@@ -175,7 +236,7 @@ export async function repurposeContent(opts: {
     .map((p) => `${p.toUpperCase()}:\n${platformSpecs[p] || platformSpecs.instagram}`)
     .join('\n\n')
 
-  const systemPrompt = `You are a content repurposing expert. Take the source content and adapt it for each target platform, keeping the core message but matching each platform's voice and length conventions.
+  const prompt = `You are a content repurposing expert. Take the source content and adapt it for each target platform, keeping the core message but matching each platform's voice and length conventions.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -187,18 +248,11 @@ Target platforms and specs:
 ${platformList}
 
 Output format (EXACTLY):
-For each platform, output a header line "===PLATFORM===" (where PLATFORM is the platform name in uppercase) followed by the adapted caption on the next line(s). Separate platforms with a blank line. No other commentary.`
+For each platform, output a header line "===PLATFORM===" (where PLATFORM is the platform name in uppercase) followed by the adapted caption on the next line(s). Separate platforms with a blank line. No other commentary.
 
-  const completion = await zai.chat.completions.create({
-    messages: [
-      { role: 'assistant', content: systemPrompt },
-      { role: 'user', content: 'Repurpose the content now.' },
-    ],
-    thinking: { type: 'disabled' },
-    temperature: 0.75,
-  })
+Repurpose the content now.`
 
-  const raw = completion.choices[0]?.message?.content || ''
+  const raw = await callGemini(prompt, { temperature: 0.75, maxOutputTokens: 4096 })
   const result: Record<string, string> = {}
 
   for (const platform of targetPlatforms) {
@@ -218,10 +272,9 @@ export async function generateContentIdeas(opts: {
   pillarTopics?: string[]
   count?: number
 }): Promise<string[]> {
-  const zai = await getAI()
   const { brandCtx, pillarTopics, count = 10 } = opts
 
-  const systemPrompt = `You are a content strategy expert. Generate ${count} unique content post ideas for the brand.
+  const prompt = `You are a content strategy expert. Generate ${count} unique content post ideas for the brand.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -233,21 +286,20 @@ Each idea should include:
 - Brief description of what the post would cover
 - Why it would resonate with the target audience
 
-Format: One idea per line, no numbering, no preamble. Just the idea text.`
+Format: One idea per line, no numbering, no preamble. Just the idea text.
 
-  const completion = await zai.chat.completions.create({
-    messages: [
-      { role: 'assistant', content: systemPrompt },
-      { role: 'user', content: `Generate ${count} content ideas now.` },
-    ],
-    thinking: { type: 'disabled' },
-    temperature: 0.9,
-  })
+Generate ${count} content ideas now.`
 
-  const raw = completion.choices[0]?.message?.content || ''
+  const raw = await callGemini(prompt, { temperature: 0.95, maxOutputTokens: 4096 })
+
   return raw
     .split('\n')
     .map((s: string) => s.trim())
     .filter(Boolean)
     .slice(0, count)
+}
+
+// For backward compatibility — keep the same exports
+export async function getAI() {
+  return { callGemini }
 }

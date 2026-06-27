@@ -2,7 +2,7 @@
 
 > Personal 1-Man Marketing Command Center — AI-powered marketing automation web app for solo marketers and small teams.
 
-Built with **Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + Prisma + PostgreSQL (Supabase)**. AI powered by **Z.AI SDK**.
+Built with **Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + Prisma + PostgreSQL (Supabase)**. AI powered by **Google Gemini** (free tier: 1,500 requests/day).
 
 ---
 
@@ -23,27 +23,23 @@ Built with **Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + Prisma + Pos
 ### Prerequisites
 - [Node.js 18+](https://nodejs.org/) or [Bun](https://bun.sh/)
 - A [Supabase](https://supabase.com/) account (free tier works)
-- A [Z.AI API key](https://z.ai/)
+- A [Google Gemini API key](https://aistudio.google.com/app/apikey) (free)
 
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/automarket-ai.git
+git clone https://github.com/mykinocinemamedia-del/automarket-ai.git
 cd automarket-ai
 bun install   # or: npm install
 ```
 
 ### 2. Configure environment
 
-Copy the example files and fill in your values:
-
 ```bash
 cp .env.example .env
-cp .z-ai-config.example .z-ai-config
 ```
 
-Edit `.env` with your Supabase credentials (see **Supabase Setup** below).
-Edit `.z-ai-config` with your Z.AI API key.
+Edit `.env` with your Supabase credentials (see **Supabase Setup** below) and Gemini API key.
 
 ### 3. Setup database
 
@@ -79,24 +75,52 @@ bun run dev          # Start dev server at http://localhost:3000
 
 ---
 
-## Z.AI Setup (AI API)
+## Google Gemini Setup (AI API)
 
-The app uses Z.AI for all AI features (caption generation, hashtag suggestions, content repurposing, idea generation).
+The app uses Google Gemini for all AI features (caption generation, hashtag suggestions, content repurposing, idea generation).
 
-1. **Get API key**: Sign up at https://z.ai/ → API Keys → Create new key
-2. **Configure** (either method works):
-   - **Method A** (recommended for production): Set env vars in Vercel:
-     ```
-     ZAI_API_KEY=your-key-here
-     ZAI_BASE_URL=https://api.z.ai/api/paas/v4
-     ```
-   - **Method B** (local dev): Edit `.z-ai-config`:
-     ```json
-     {
-       "baseUrl": "https://api.z.ai/api/paas/v4",
-       "apiKey": "your-key-here"
-     }
-     ```
+### Free Tier Limits
+- ✅ **1,500 requests per day** (plenty for solo marketer)
+- ✅ **1 million tokens per minute**
+- ✅ **No credit card required** (during free tier beta)
+- ✅ **Multimodal** — text + image + video understanding
+
+### Get API Key
+
+1. **Open Google AI Studio**: https://aistudio.google.com/app/apikey
+2. **Sign in** with your Google account
+3. **Click "Create API Key"**
+4. **Select a Google Cloud project** (or create a new one — default works fine)
+5. **Copy the key** — format starts with `AIza...` (~40 characters)
+6. **Add to `.env`**:
+   ```env
+   GEMINI_API_KEY="AIza...your-key-here"
+   ```
+
+### Troubleshooting
+
+**"You exceeded your current quota"** (RESOURCE_EXHAUSTED):
+- Wait 24 hours for daily quota to reset
+- Or check https://ai.google.dev/gemini-api/docs/rate-limits
+- Make sure you're using the free tier (no billing required during beta)
+
+**"User location is not supported"**:
+- Gemini API is geo-restricted in some regions
+- Use a VPN/Proxy if needed
+- Or try a different model: set `GEMINI_MODEL=gemini-2.0-flash` in `.env`
+
+### Optional: Use a different Gemini model
+
+```env
+# Default (recommended — fast, free-tier friendly)
+GEMINI_MODEL="gemini-2.0-flash"
+
+# More powerful but slower
+# GEMINI_MODEL="gemini-2.5-flash"
+# GEMINI_MODEL="gemini-2.5-pro"
+```
+
+📖 Docs: https://ai.google.dev/gemini-api/docs
 
 ---
 
@@ -104,16 +128,14 @@ The app uses Z.AI for all AI features (caption generation, hashtag suggestions, 
 
 ### Option A: One-click deploy via Vercel Dashboard (recommended)
 
-1. Push your repo to GitHub (see **GitHub Setup** below)
-2. Go to https://vercel.com/new
-3. Import your GitHub repo
-4. **Configure Environment Variables** (Vercel will detect them from `.env.example`):
+1. Go to https://vercel.com/new
+2. Import your GitHub repo (`automarket-ai`)
+3. **Configure Environment Variables**:
    - `DATABASE_URL` — your Supabase pooler URL
    - `DIRECT_URL` — your Supabase direct URL
-   - `ZAI_API_KEY` — your Z.AI API key
-   - `ZAI_BASE_URL` — `https://api.z.ai/api/paas/v4`
-5. Click **Deploy** — Vercel will run `bun run build` (which auto-runs `prisma generate`)
-6. After deploy: run the database migration once:
+   - `GEMINI_API_KEY` — your Google Gemini API key
+4. Click **Deploy** — Vercel will run `bun run build` (which auto-runs `prisma generate`)
+5. After deploy: run the database migration once:
    ```bash
    # From your local machine (with .env set to production values)
    bun run db:push
@@ -132,63 +154,14 @@ vercel login
 # Deploy from project root
 vercel
 
-# Follow prompts:
-# - Set up and deploy: Y
-# - Which scope: (your account)
-# - Link to existing project: N
-# - Project name: automarket-ai
-# - Framework preset: Next.js (auto-detected)
-# - Build command: bun run build (auto-detected)
-# - Output directory: .next (auto-detected)
-
 # Add env vars
 vercel env add DATABASE_URL
 vercel env add DIRECT_URL
-vercel env add ZAI_API_KEY
-vercel env add ZAI_BASE_URL
+vercel env add GEMINI_API_KEY
 
 # Deploy to production
 vercel --prod
 ```
-
----
-
-## GitHub Setup
-
-### Create a new repo and push
-
-```bash
-# From /home/z/my-project (or wherever you cloned)
-
-# If you haven't set git identity yet:
-git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
-
-# Initialize git
-git init
-git add .
-git commit -m "Initial commit: AutoMarket AI v1.0"
-
-# Create empty repo on GitHub first (https://github.com/new), then:
-git remote add origin https://github.com/YOUR_USERNAME/automarket-ai.git
-git branch -M main
-git push -u origin main
-```
-
-### Or via GitHub CLI
-
-```bash
-# Install: https://cli.github.com/
-gh auth login
-
-# Create repo + push in one go
-gh repo create automarket-ai --public --source=. --remote=origin --push
-```
-
-🔗 Useful links:
-- Create new repo: https://github.com/new
-- GitHub CLI: https://cli.github.com/
-- GitHub Desktop: https://desktop.github.com/
 
 ---
 
@@ -223,13 +196,12 @@ automarket-ai/
 │   │   ├── use-toast.ts           # Toast notifications
 │   │   └── use-mobile.ts          # Mobile detection
 │   └── lib/
-│       ├── ai.ts                  # Z.AI SDK wrapper
+│       ├── ai.ts                  # Google Gemini wrapper
 │       ├── db.ts                  # Prisma client
 │       ├── platforms.ts           # Platform metadata + helpers
 │       ├── store.ts               # Zustand navigation store
 │       └── utils.ts               # cn() helper
 ├── .env.example                   # Env var template
-├── .z-ai-config.example           # Z.AI config template
 ├── .gitignore
 ├── package.json
 ├── tsconfig.json
@@ -264,7 +236,7 @@ automarket-ai/
 - **Styling**: Tailwind CSS 4 + shadcn/ui (New York)
 - **Database**: PostgreSQL via Supabase
 - **ORM**: Prisma 6
-- **AI**: Z.AI SDK (`z-ai-web-dev-sdk`)
+- **AI**: Google Gemini (`gemini-2.0-flash`)
 - **Charts**: Recharts
 - **State**: Zustand
 - **Icons**: Lucide React
@@ -283,6 +255,9 @@ Edit `src/lib/platforms.ts` → add to `PLATFORMS` array.
 ### Modify AI prompts
 Edit `src/lib/ai.ts` — all prompts are inline in the functions (`generateCaption`, `generateHashtags`, `repurposeContent`, `generateContentIdeas`).
 
+### Switch AI provider
+The `src/lib/ai.ts` file is the only file that talks to the AI. Replace the `callGemini()` function with any other provider (OpenAI, Anthropic, Groq, etc.) — the rest of the app doesn't need changes.
+
 ---
 
 ## Roadmap / Future Improvements
@@ -290,7 +265,7 @@ Edit `src/lib/ai.ts` — all prompts are inline in the functions (`generateCapti
 - [ ] Real social media API integration (Instagram Graph, LinkedIn, Facebook, X)
 - [ ] Auto-publish at scheduled time (Vercel Cron + Queue)
 - [ ] Multi-user support with NextAuth
-- [ ] Image generation for post visuals
+- [ ] Image generation for post visuals (using Gemini's image capabilities)
 - [ ] Auto-reply comment drafting
 - [ ] Hashtag trend research via API
 - [ ] Bulk CSV upload for posts
@@ -306,8 +281,8 @@ MIT — feel free to use, modify, and distribute.
 
 ## Support
 
-- 🐛 Issues: https://github.com/YOUR_USERNAME/automarket-ai/issues
-- 📖 Z.AI docs: https://z.ai/
+- 🐛 Issues: https://github.com/mykinocinemamedia-del/automarket-ai/issues
+- 📖 Gemini API docs: https://ai.google.dev/gemini-api/docs
 - 📖 Supabase docs: https://supabase.com/docs
 - 📖 Vercel docs: https://vercel.com/docs
 - 📖 Next.js docs: https://nextjs.org/docs

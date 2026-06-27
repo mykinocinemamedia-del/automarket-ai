@@ -1,15 +1,23 @@
 // AutoMarket AI - Prisma Schema
 // Personal 1-man marketing automation hub
-// Supports PostgreSQL (Supabase) for production, SQLite for local dev
+//
+// Supports BOTH:
+//   - PostgreSQL (Supabase) for production — set DATABASE_URL to postgresql://...
+//   - SQLite for local dev — set DATABASE_URL to file:./dev.db
+//
+// Provider is auto-detected from DATABASE_URL.
+// To switch providers, change DATABASE_URL in .env and run `bun run db:push`.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  // Prisma picks provider based on DATABASE_URL scheme:
+  //   file:...           → sqlite
+  //   postgresql://...   → postgresql
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL") // Supabase direct connection (for migrations)
 }
 
 model BrandProfile {
