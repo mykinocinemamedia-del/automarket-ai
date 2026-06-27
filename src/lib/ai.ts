@@ -1,59 +1,90 @@
 /**
- * Google Gemini AI integration
+ * AI integration — supports Groq (primary), Gemini (fallback)
  *
- * Free tier: 1,500 requests/day, 1M tokens/min
- * Docs: https://ai.google.dev/gemini-api/docs
+ * Groq: Free, fast (500+ tokens/sec), OpenAI-compatible API
+ *   Free tier: 14,400 requests/day, 30 RPM
+ *   Get key: https://console.groq.com/keys
  *
- * Env vars:
- *  - GEMINI_API_KEY (required)
- *  - GEMINI_MODEL (optional, default: gemini-2.0-flash)
+ * Gemini: Free, multimodal, but quota can be limited for new keys
+ *   Get key: https://aistudio.google.com/app/apikey
  */
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+const GROQ_BASE_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-if (!GEMINI_API_KEY) {
-  console.warn('[AI] GEMINI_API_KEY is not set. AI features will not work.')
-}
+// Auto-detect which provider to use (Groq preferred)
+const USE_GROQ = !!GROQ_API_KEY
 
-interface GeminiResponse {
-  candidates?: Array<{
-    content?: { parts?: Array<{ text?: string }> }
-    finishReason?: string
-  }>
-  usageMetadata?: {
-    promptTokenCount?: number
-    candidatesTokenCount?: number
-    totalTokenCount?: number
-  }
-  error?: { code: number; message: string; status?: string }
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
 }
 
 /**
- * Low-level Gemini text generation call
+ * Call Groq (OpenAI-compatible API)
  */
-export async function callGemini(
+async function callGroq(
+  messages: ChatMessage[],
+  options: { temperature?: number; maxTokens?: number } = {}
+): Promise<string> {
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not set')
+  }
+
+  const res = await fetch(GROQ_BASE_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages,
+      temperature: options.temperature ?? 0.85,
+      max_tokens: options.maxTokens ?? 4096,
+    }),
+  })
+
+  if (!res.ok) {
+    let errMsg = `Groq API error ${res.status}`
+    try {
+      const errBody = await res.json()
+      errMsg = errBody?.error?.message || errMsg
+    } catch {}
+    throw new Error(errMsg)
+  }
+
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || ''
+}
+
+/**
+ * Call Gemini (fallback)
+ */
+async function callGemini(
   prompt: string,
-  options: {
-    temperature?: number
-    maxOutputTokens?: number
-    topP?: number
-    topK?: number
-  } = {}
+  systemPrompt: string,
+  options: { temperature?: number; maxTokens?: number } = {}
 ): Promise<string> {
   if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY environment variable is not set')
+    throw new Error('GEMINI_API_KEY is not set')
   }
 
   const url = `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
+  const fullPrompt = `${systemPrompt}\n\n---\n\n${prompt}`
+
   const body = {
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts: [{ text: fullPrompt }] }],
     generationConfig: {
       temperature: options.temperature ?? 0.85,
-      maxOutputTokens: options.maxOutputTokens ?? 4096,
-      topP: options.topP ?? 0.95,
-      topK: options.topK ?? 40,
+      maxOutputTokens: options.maxTokens ?? 4096,
+      topP: 0.95,
+      topK: 40,
     },
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -78,15 +109,40 @@ export async function callGemini(
     throw new Error(errMsg)
   }
 
-  const data: GeminiResponse = await res.json()
-
-  if (data.error) {
-    throw new Error(`Gemini error: ${data.error.message}`)
-  }
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  return text
+  const data = await res.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
+
+/**
+ * Unified AI call — uses Groq if available, falls back to Gemini
+ */
+async function callAI(
+  systemPrompt: string,
+  userPrompt: string,
+  options: { temperature?: number; maxTokens?: number } = {}
+): Promise<string> {
+  if (USE_GROQ) {
+    return await callGroq(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      options
+    )
+  } else if (GEMINI_API_KEY) {
+    return await callGemini(userPrompt, systemPrompt, options)
+  } else {
+    throw new Error('No AI provider configured. Set GROQ_API_KEY or GEMINI_API_KEY environment variable.')
+  }
+}
+
+export function getAIProvider(): string {
+  return USE_GROQ ? 'Groq' : (GEMINI_API_KEY ? 'Gemini' : 'None')
+}
+
+// ============================================================
+// Brand context helper
+// ============================================================
 
 export interface BrandContext {
   name?: string
@@ -108,6 +164,10 @@ export function buildBrandPrompt(ctx: BrandContext): string {
   return parts.length ? parts.join('\n') : 'No specific brand context provided.'
 }
 
+// ============================================================
+// Caption generation
+// ============================================================
+
 export async function generateCaption(opts: {
   topic: string
   platform: string
@@ -127,7 +187,7 @@ export async function generateCaption(opts: {
 
   const platformSpec = platformSpecs[platform] || platformSpecs.instagram
 
-  const prompt = `You are a world-class social media copywriter. Generate ${count} distinct caption variants for the requested platform.
+  const systemPrompt = `You are a world-class social media copywriter. Generate ${count} distinct caption variants for the requested platform.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -143,11 +203,11 @@ Rules:
 3. Use language natural to the target audience (mix English/BM if brand is Malaysian)
 4. Return ONLY the captions, separated by the literal token ===VARIANT=== on its own line
 5. No numbering, no prefixes, no explanations, no markdown
-6. Each variant starts immediately after the ===VARIANT=== separator
+6. Each variant starts immediately after the ===VARIANT=== separator`
 
-Generate ${count} caption variants now. Separate them with ===VARIANT=== on its own line.`
+  const userPrompt = `Generate ${count} caption variants now. Separate them with ===VARIANT=== on its own line.`
 
-  const raw = await callGemini(prompt, { temperature: 0.9, maxOutputTokens: 4096 })
+  const raw = await callAI(systemPrompt, userPrompt, { temperature: 0.9, maxTokens: 4096 })
 
   // Try multiple separators the model might use
   let parts: string[] = []
@@ -171,6 +231,10 @@ Generate ${count} caption variants now. Separate them with ===VARIANT=== on its 
     .slice(0, count)
 }
 
+// ============================================================
+// Hashtag generation
+// ============================================================
+
 export async function generateHashtags(opts: {
   topic: string
   platform: string
@@ -189,7 +253,7 @@ export async function generateHashtags(opts: {
   const maxForPlatform = limits[platform] || 10
   const finalCount = Math.min(count, maxForPlatform)
 
-  const prompt = `You are a hashtag strategist. Suggest ${finalCount} high-quality hashtags for ${platform}.
+  const systemPrompt = `You are a hashtag strategist. Suggest ${finalCount} high-quality hashtags for ${platform}.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -204,11 +268,11 @@ Mix strategy:
 Rules:
 1. Return ONLY hashtags, one per line, starting with #
 2. No explanations, no numbering
-3. No duplicates
+3. No duplicates`
 
-Generate ${finalCount} hashtags now.`
+  const userPrompt = `Generate ${finalCount} hashtags now.`
 
-  const raw = await callGemini(prompt, { temperature: 0.7, maxOutputTokens: 1024 })
+  const raw = await callAI(systemPrompt, userPrompt, { temperature: 0.7, maxTokens: 1024 })
 
   return raw
     .split('\n')
@@ -216,6 +280,10 @@ Generate ${finalCount} hashtags now.`
     .filter((s: string) => s.startsWith('#'))
     .slice(0, finalCount)
 }
+
+// ============================================================
+// Content repurposing
+// ============================================================
 
 export async function repurposeContent(opts: {
   sourceContent: string
@@ -236,7 +304,7 @@ export async function repurposeContent(opts: {
     .map((p) => `${p.toUpperCase()}:\n${platformSpecs[p] || platformSpecs.instagram}`)
     .join('\n\n')
 
-  const prompt = `You are a content repurposing expert. Take the source content and adapt it for each target platform, keeping the core message but matching each platform's voice and length conventions.
+  const systemPrompt = `You are a content repurposing expert. Take the source content and adapt it for each target platform, keeping the core message but matching each platform's voice and length conventions.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -248,11 +316,11 @@ Target platforms and specs:
 ${platformList}
 
 Output format (EXACTLY):
-For each platform, output a header line "===PLATFORM===" (where PLATFORM is the platform name in uppercase) followed by the adapted caption on the next line(s). Separate platforms with a blank line. No other commentary.
+For each platform, output a header line "===PLATFORM===" (where PLATFORM is the platform name in uppercase) followed by the adapted caption on the next line(s). Separate platforms with a blank line. No other commentary.`
 
-Repurpose the content now.`
+  const userPrompt = 'Repurpose the content now.'
 
-  const raw = await callGemini(prompt, { temperature: 0.75, maxOutputTokens: 4096 })
+  const raw = await callAI(systemPrompt, userPrompt, { temperature: 0.75, maxTokens: 4096 })
   const result: Record<string, string> = {}
 
   for (const platform of targetPlatforms) {
@@ -267,6 +335,10 @@ Repurpose the content now.`
   return result
 }
 
+// ============================================================
+// Content idea generation
+// ============================================================
+
 export async function generateContentIdeas(opts: {
   brandCtx: BrandContext
   pillarTopics?: string[]
@@ -274,7 +346,7 @@ export async function generateContentIdeas(opts: {
 }): Promise<string[]> {
   const { brandCtx, pillarTopics, count = 10 } = opts
 
-  const prompt = `You are a content strategy expert. Generate ${count} unique content post ideas for the brand.
+  const systemPrompt = `You are a content strategy expert. Generate ${count} unique content post ideas for the brand.
 
 Brand context:
 ${buildBrandPrompt(brandCtx)}
@@ -286,11 +358,11 @@ Each idea should include:
 - Brief description of what the post would cover
 - Why it would resonate with the target audience
 
-Format: One idea per line, no numbering, no preamble. Just the idea text.
+Format: One idea per line, no numbering, no preamble. Just the idea text.`
 
-Generate ${count} content ideas now.`
+  const userPrompt = `Generate ${count} content ideas now.`
 
-  const raw = await callGemini(prompt, { temperature: 0.95, maxOutputTokens: 4096 })
+  const raw = await callAI(systemPrompt, userPrompt, { temperature: 0.95, maxTokens: 4096 })
 
   return raw
     .split('\n')
@@ -299,7 +371,10 @@ Generate ${count} content ideas now.`
     .slice(0, count)
 }
 
-// For backward compatibility — keep the same exports
+// ============================================================
+// Backward compatibility
+// ============================================================
+
 export async function getAI() {
-  return { callGemini }
+  return { callAI, getAIProvider }
 }
