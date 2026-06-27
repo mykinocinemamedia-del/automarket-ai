@@ -92,28 +92,28 @@ export function DashboardSection() {
       desc: 'AI writes captions for any platform',
       icon: Sparkles,
       section: 'studio' as const,
-      color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+      bg: 'bg-[var(--brutal-yellow)]',
     },
     {
       title: 'Schedule Post',
       desc: 'Queue content for the week',
       icon: CalendarDays,
       section: 'calendar' as const,
-      color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      bg: 'bg-[var(--brutal-green)]',
     },
     {
       title: 'Setup Brand Voice',
       desc: 'Teach AI your tone & audience',
       icon: TrendingUp,
       section: 'brand' as const,
-      color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+      bg: 'bg-white',
     },
     {
       title: 'Create Automation',
       desc: 'Set up auto-pilot rules',
       icon: Bot,
       section: 'autopilot' as const,
-      color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      bg: 'bg-[var(--brutal-red)] text-white',
     },
   ]
 
@@ -171,16 +171,16 @@ export function DashboardSection() {
             <button
               key={qa.title}
               onClick={() => setSection(qa.section)}
-              className="group text-left p-4 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all"
+              className="group text-left p-4 border-[3px] border-black bg-card shadow-brutal-sm hover:shadow-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
             >
-              <div className={`h-9 w-9 rounded-lg flex items-center justify-center mb-3 ${qa.color}`}>
+              <div className={`h-10 w-10 flex items-center justify-center mb-3 border-[3px] border-black ${qa.bg}`}>
                 <Icon className="h-5 w-5" />
               </div>
-              <div className="font-semibold text-sm flex items-center gap-1">
+              <div className="font-display text-lg leading-none tracking-wide flex items-center gap-1">
                 {qa.title}
                 <ArrowUpRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <div className="text-xs text-muted-foreground mt-1">{qa.desc}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-black/60 mt-1">{qa.desc}</div>
             </button>
           )
         })}
@@ -360,10 +360,10 @@ export function DashboardSection() {
 
       {/* Setup checklist */}
       {!brand && (
-        <Card className="mt-6 border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
+        <Card className="mt-6 bg-[var(--brutal-yellow)]">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertCircle className="h-5 w-5" />
               Complete your setup
             </CardTitle>
             <CardDescription className="text-xs">
@@ -371,7 +371,7 @@ export function DashboardSection() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => setSection('brand')} size="sm" className="gap-2">
+            <Button onClick={() => setSection('brand')} size="sm" className="gap-2 bg-black text-[var(--brutal-yellow)]">
               Set up brand
               <ArrowRight className="h-4 w-4" />
             </Button>
@@ -396,14 +396,16 @@ function StatCard({
   accent: string
 }) {
   return (
-    <Card>
+    <Card className="hover:shadow-brutal hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-muted-foreground">{label}</span>
-          <Icon className={`h-4 w-4 ${accent}`} />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-black/60">{label}</span>
+          <div className="h-8 w-8 bg-[var(--brutal-yellow)] flex items-center justify-center border-[2px] border-black">
+            <Icon className="h-4 w-4 text-black" />
+          </div>
         </div>
-        <div className="text-2xl font-bold tracking-tight">{value}</div>
-        <div className="text-[11px] text-muted-foreground mt-1">{sub}</div>
+        <div className="font-display text-4xl leading-none tracking-wide">{value}</div>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-black/60 mt-2 border-l-[3px] border-[var(--brutal-red)] pl-2">{sub}</div>
       </CardContent>
     </Card>
   )

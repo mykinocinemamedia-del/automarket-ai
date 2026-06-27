@@ -15,14 +15,14 @@ export function SectionHeader({ title, description, icon: Icon, actions, classNa
     <div className={cn('flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6', className)}>
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (
-          <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Icon className="h-5 w-5" />
+          <div className="h-12 w-12 bg-[var(--brutal-yellow)] text-black flex items-center justify-center shrink-0 border-[3px] border-black shadow-brutal-sm">
+            <Icon className="h-6 w-6" />
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
+          <h1 className="font-display text-4xl sm:text-5xl leading-none tracking-wide">{title}</h1>
           {description && (
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{description}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-black/60 mt-2 max-w-2xl">{description}</p>
           )}
         </div>
       </div>
