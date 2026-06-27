@@ -13,11 +13,11 @@ generator client {
 }
 
 datasource db {
-  // Prisma picks provider based on DATABASE_URL scheme:
-  //   file:...           → sqlite
-  //   postgresql://...   → postgresql
-  provider = "sqlite"
+  // Production: PostgreSQL on Supabase
+  // Use pooler URL for both DATABASE_URL and DIRECT_URL (direct host may be blocked)
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model BrandProfile {
