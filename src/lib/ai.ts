@@ -1,13 +1,24 @@
 /**
- * AI integration — supports Groq (primary), Gemini (fallback)
+ * AI integration — multi-provider with automatic fallback
  *
- * Groq: Free, fast (500+ tokens/sec), OpenAI-compatible API
- *   Free tier: 14,400 requests/day, 30 RPM
+ * Priority: Z.AI SDK (free, has web_search) → Groq (fast) → Gemini (fallback)
+ *
+ * Z.AI SDK: Free tier, includes web_search & page_reader functions
+ *   Docs: https://z.ai
+ *   Auto-configured via .z-ai-config or env vars
+ *
+ * Groq: Free tier (14,400 req/day, 12k TPM), OpenAI-compatible
  *   Get key: https://console.groq.com/keys
  *
- * Gemini: Free, multimodal, but quota can be limited for new keys
+ * Gemini: Free tier (1,500 req/day)
  *   Get key: https://aistudio.google.com/app/apikey
  */
+
+import ZAI from 'z-ai-web-dev-sdk'
+
+// ============================================================
+// Provider configurations
+// ============================================================
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
@@ -17,24 +28,48 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-// Auto-detect which provider to use (Groq preferred)
-const USE_GROQ = !!GROQ_API_KEY
+// Z.AI SDK instance (lazy-loaded)
+let zaiInstance: any = null
+async function getZAI() {
+  if (!zaiInstance) {
+    zaiInstance = await ZAI.create()
+  }
+  return zaiInstance
+}
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
   content: string
 }
 
-/**
- * Call Groq (OpenAI-compatible API)
- */
-async function callGroq(
-  messages: ChatMessage[],
+// ============================================================
+// Provider call functions
+// ============================================================
+
+async function callZAI(
+  systemPrompt: string,
+  userPrompt: string,
   options: { temperature?: number; maxTokens?: number } = {}
 ): Promise<string> {
-  if (!GROQ_API_KEY) {
-    throw new Error('GROQ_API_KEY is not set')
-  }
+  const zai = await getZAI()
+  const completion = await zai.chat.completions.create({
+    messages: [
+      { role: 'assistant', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    thinking: { type: 'disabled' },
+    temperature: options.temperature ?? 0.85,
+    max_tokens: options.maxTokens ?? 4096,
+  })
+  return completion.choices?.[0]?.message?.content || ''
+}
+
+async function callGroq(
+  systemPrompt: string,
+  userPrompt: string,
+  options: { temperature?: number; maxTokens?: number } = {}
+): Promise<string> {
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not set')
 
   const res = await fetch(GROQ_BASE_URL, {
     method: 'POST',
@@ -44,7 +79,10 @@ async function callGroq(
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
-      messages,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
       temperature: options.temperature ?? 0.85,
       max_tokens: options.maxTokens ?? 4096,
     }),
@@ -63,20 +101,15 @@ async function callGroq(
   return data.choices?.[0]?.message?.content || ''
 }
 
-/**
- * Call Gemini (fallback)
- */
 async function callGemini(
-  prompt: string,
   systemPrompt: string,
+  userPrompt: string,
   options: { temperature?: number; maxTokens?: number } = {}
 ): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY is not set')
-  }
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set')
 
   const url = `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
-  const fullPrompt = `${systemPrompt}\n\n---\n\n${prompt}`
+  const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`
 
   const body = {
     contents: [{ parts: [{ text: fullPrompt }] }],
@@ -113,31 +146,68 @@ async function callGemini(
   return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
 
+// ============================================================
+// Unified call with automatic fallback
+// ============================================================
+
+function isRateLimitError(err: any): boolean {
+  const msg = (err?.message || '').toLowerCase()
+  return (
+    msg.includes('rate limit') ||
+    msg.includes('rate_limit') ||
+    msg.includes('429') ||
+    msg.includes('quota') ||
+    msg.includes('tpm') ||
+    msg.includes('rpm')
+  )
+}
+
 /**
- * Unified AI call — uses Groq if available, falls back to Gemini
+ * Try providers in order: Groq → Z.AI → Gemini
+ * Automatically falls back on rate limit or errors
  */
 async function callAI(
   systemPrompt: string,
   userPrompt: string,
   options: { temperature?: number; maxTokens?: number } = {}
 ): Promise<string> {
-  if (USE_GROQ) {
-    return await callGroq(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      options
-    )
-  } else if (GEMINI_API_KEY) {
-    return await callGemini(userPrompt, systemPrompt, options)
-  } else {
-    throw new Error('No AI provider configured. Set GROQ_API_KEY or GEMINI_API_KEY environment variable.')
+  const errors: string[] = []
+
+  // 1. Try Groq (fastest)
+  if (GROQ_API_KEY) {
+    try {
+      return await callGroq(systemPrompt, userPrompt, options)
+    } catch (e: any) {
+      errors.push(`Groq: ${e.message}`)
+      if (!isRateLimitError(e)) {
+        // Non-rate-limit error, still try fallback
+      }
+    }
   }
+
+  // 2. Try Z.AI (free, reliable)
+  try {
+    return await callZAI(systemPrompt, userPrompt, options)
+  } catch (e: any) {
+    errors.push(`Z.AI: ${e.message}`)
+  }
+
+  // 3. Try Gemini (last resort)
+  if (GEMINI_API_KEY) {
+    try {
+      return await callGemini(systemPrompt, userPrompt, options)
+    } catch (e: any) {
+      errors.push(`Gemini: ${e.message}`)
+    }
+  }
+
+  throw new Error(`All AI providers failed:\n${errors.join('\n')}`)
 }
 
 export function getAIProvider(): string {
-  return USE_GROQ ? 'Groq' : (GEMINI_API_KEY ? 'Gemini' : 'None')
+  if (GROQ_API_KEY) return 'Groq (with Z.AI + Gemini fallback)'
+  if (GEMINI_API_KEY) return 'Z.AI (with Gemini fallback)'
+  return 'Z.AI'
 }
 
 // ============================================================
@@ -209,7 +279,6 @@ Rules:
 
   const raw = await callAI(systemPrompt, userPrompt, { temperature: 0.9, maxTokens: 4096 })
 
-  // Try multiple separators the model might use
   let parts: string[] = []
   if (raw.includes('===VARIANT===')) {
     parts = raw.split(/={0,5}VARIANT={0,5}/)
@@ -378,3 +447,6 @@ Format: One idea per line, no numbering, no preamble. Just the idea text.`
 export async function getAI() {
   return { callAI, getAIProvider }
 }
+
+// Export the underlying providers for specialized use (e.g., web search)
+export { callZAI, callGroq, callGemini, callAI }

@@ -20,6 +20,7 @@ import {
   Plus,
   MessageSquare,
   FolderKanban,
+  TrendingUp,
 } from 'lucide-react'
 
 interface NavItem {
@@ -32,6 +33,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview & quick stats' },
   { id: 'projects', label: 'Projects', icon: FolderKanban, description: 'Manage all companies & clients' },
+  { id: 'trends', label: 'Trend Agent', icon: TrendingUp, description: 'Autonomous trend monitoring' },
   { id: 'agent', label: 'AI Campaign Agent', icon: MessageSquare, description: 'Chat & auto-generate month' },
   { id: 'studio', label: 'AI Content Studio', icon: Sparkles, description: 'Generate captions & ideas' },
   { id: 'brand', label: 'Brand Memory', icon: Building2, description: 'Brand voice & audience' },

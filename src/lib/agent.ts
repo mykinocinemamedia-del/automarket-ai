@@ -6,18 +6,11 @@
  * 2. Strategy: AI proposes content strategy
  * 3. Generation: AI generates 30 days of content & auto-saves to DB
  *
- * Supports Groq (preferred) and Gemini (fallback)
+ * Uses unified callAI() with automatic provider fallback:
+ * Groq → Z.AI → Gemini
  */
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
-const GROQ_BASE_URL = 'https://api.groq.com/openai/v1/chat/completions'
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
-
-const USE_GROQ = !!GROQ_API_KEY
+import { callAI } from './ai'
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
@@ -129,81 +122,6 @@ RULES:
 11. Every post must have a clear purpose (educate, engage, promote, or inspire)
 12. Don't repeat the same hook or opening line across posts`
 
-async function callAI(prompt: string, systemPrompt: string, temperature = 0.85): Promise<string> {
-  if (USE_GROQ) {
-    // Groq (OpenAI-compatible)
-    if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY is not set')
-
-    const res = await fetch(GROQ_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt },
-        ],
-        temperature,
-        max_tokens: 8192,
-      }),
-    })
-
-    if (!res.ok) {
-      let errMsg = `Groq API error ${res.status}`
-      try {
-        const errBody = await res.json()
-        errMsg = errBody?.error?.message || errMsg
-      } catch {}
-      throw new Error(errMsg)
-    }
-
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content || ''
-  } else {
-    // Gemini fallback
-    if (!GEMINI_API_KEY) throw new Error('GROQ_API_KEY or GEMINI_API_KEY is not set')
-
-    const url = `${GEMINI_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`
-    const fullPrompt = `${systemPrompt}\n\n---\n\n${prompt}`
-
-    const body = {
-      contents: [{ parts: [{ text: fullPrompt }] }],
-      generationConfig: {
-        temperature,
-        maxOutputTokens: 8192,
-        topP: 0.95,
-        topK: 40,
-      },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      ],
-    }
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-
-    if (!res.ok) {
-      let errMsg = `Gemini API error ${res.status}`
-      try {
-        const errBody = await res.json()
-        errMsg = errBody?.error?.message || errMsg
-      } catch {}
-      throw new Error(errMsg)
-    }
-
-    const data = await res.json()
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-  }
-}
 
 /**
  * Chat with the agent — takes conversation history and returns AI response
