@@ -13,6 +13,7 @@ import { CalendarSection } from '@/components/sections/calendar-section'
 import { AssetsSection } from '@/components/sections/assets-section'
 import { AnalyticsSection } from '@/components/sections/analytics-section'
 import { AutopilotSection } from '@/components/sections/autopilot-section'
+import { FloatingAssistant } from '@/components/floating-assistant'
 
 export default function Home() {
   const activeSection = useAppStore((s) => s.activeSection)
@@ -39,6 +40,7 @@ export default function Home() {
         {activeSection === 'analytics' && <AnalyticsSection />}
         {activeSection === 'autopilot' && <AutopilotSection />}
       </main>
+      <FloatingAssistant />
     </div>
   )
 }

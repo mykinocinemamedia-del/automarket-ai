@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SectionHeader } from '@/components/section-header'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -75,6 +75,31 @@ function CaptionGenerator() {
   const activeProjectId = useAppStore((s) => s.activeProjectId)
   const { toast } = useToast()
   const setSection = useAppStore((s) => s.setSection)
+
+  // Listen for assistant fill events
+  useEffect(() => {
+    const handleFill = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail.target === 'caption_input' || detail.target === 'topic') {
+        setTopic(detail.data)
+        toast({ title: 'Topic filled by assistant' })
+      }
+    }
+    const handleGenerate = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail.target === 'caption' && detail.data?.topic) {
+        setTopic(detail.data.topic)
+        if (detail.data.platform) setPlatform(detail.data.platform)
+        setTimeout(() => generate(), 100)
+      }
+    }
+    window.addEventListener('assistant-fill', handleFill)
+    window.addEventListener('assistant-generate', handleGenerate)
+    return () => {
+      window.removeEventListener('assistant-fill', handleFill)
+      window.removeEventListener('assistant-generate', handleGenerate)
+    }
+  }, [])
 
   const generate = async () => {
     if (!topic.trim()) {
