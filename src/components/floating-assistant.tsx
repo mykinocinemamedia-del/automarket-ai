@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { getPagePrompts } from '@/lib/assistant'
+import { getPagePrompts } from '@/lib/copywriting-rules'
 import { cn } from '@/lib/utils'
 import {
   Sparkles,
