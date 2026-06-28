@@ -1,7 +1,7 @@
 -- Multi-project migration
 -- Adds support for multiple companies/projects/clients in one account
 
--- 1. Create projects table
+-- 1. Create projects table (use quoted column names for camelCase consistency)
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT NOT NULL DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS projects (
     description TEXT,
     color TEXT,
     emoji TEXT,
-    createdAt TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updatedAt TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT projects_pkey PRIMARY KEY (id)
 );
 
