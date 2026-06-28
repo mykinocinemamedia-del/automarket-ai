@@ -134,7 +134,7 @@ export function DashboardSection() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl mx-auto">
       <SectionHeader
-        title={brand ? `Welcome back, ${brand.name}` : 'Welcome to AutoMarket AI'}
+        title={brand ? `Welcome back, ${brand.name}` : 'Welcome to Kino Social'}
         description="Your personal marketing command center. Everything you need to run social media like a 1-person team."
         icon={Zap}
         actions={

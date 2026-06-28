@@ -101,7 +101,7 @@ function SidebarFooter() {
       </Button>
       <div className="flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-widest text-black/60">
         <Zap className="h-3 w-3 text-[var(--brutal-red)]" />
-        <span>AutoMarket AI v2.0</span>
+        <span>Kino Social v2.0</span>
         <Badge variant="outline" className="ml-auto text-[9px] h-5 px-1.5 py-0 bg-[var(--brutal-green)] text-black border-black">LIVE</Badge>
       </div>
     </div>
@@ -114,10 +114,10 @@ function SidebarContent() {
       <div className="px-3 pt-4 pb-3 border-b-[3px] border-black">
         <div className="flex items-center gap-2">
           <div className="h-10 w-10 bg-black text-[var(--brutal-yellow)] flex items-center justify-center font-display text-2xl border-[3px] border-black shadow-brutal-sm">
-            A
+            K
           </div>
           <div>
-            <div className="font-display text-2xl leading-none tracking-wide">AUTOMARKET AI</div>
+            <div className="font-display text-2xl leading-none tracking-wide">KINO SOCIAL</div>
             <div className="text-[9px] font-bold uppercase tracking-widest text-black/60 mt-0.5">MULTI-PROJECT MARKETING HUB</div>
           </div>
         </div>
@@ -143,9 +143,9 @@ export function AppSidebar() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 h-14 border-b-[3px] border-black bg-[var(--brutal-cream)]">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 bg-black text-[var(--brutal-yellow)] flex items-center justify-center font-display text-lg border-[2px] border-black">
-            A
+            K
           </div>
-          <span className="font-display text-lg tracking-wide">AUTOMARKET AI</span>
+          <span className="font-display text-lg tracking-wide">KINO SOCIAL</span>
         </div>
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>

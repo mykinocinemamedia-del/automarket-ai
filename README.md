@@ -1,4 +1,4 @@
-# AutoMarket AI
+# Kino Social
 
 > Personal 1-Man Marketing Command Center — AI-powered marketing automation web app for solo marketers and small teams.
 
@@ -28,8 +28,8 @@ Built with **Next.js 16 + TypeScript + Tailwind CSS 4 + shadcn/ui + Prisma + Pos
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/mykinocinemamedia-del/automarket-ai.git
-cd automarket-ai
+git clone https://github.com/mykinocinemamedia-del/kino-social.git
+cd kino-social
 bun install   # or: npm install
 ```
 
@@ -129,7 +129,7 @@ GEMINI_MODEL="gemini-2.0-flash"
 ### Option A: One-click deploy via Vercel Dashboard (recommended)
 
 1. Go to https://vercel.com/new
-2. Import your GitHub repo (`automarket-ai`)
+2. Import your GitHub repo (`kino-social`)
 3. **Configure Environment Variables**:
    - `DATABASE_URL` — your Supabase pooler URL
    - `DIRECT_URL` — your Supabase direct URL
@@ -168,7 +168,7 @@ vercel --prod
 ## Project Structure
 
 ```
-automarket-ai/
+kino-social/
 ├── prisma/
 │   └── schema.prisma              # Database schema (PostgreSQL)
 ├── public/                        # Static assets
@@ -281,7 +281,7 @@ MIT — feel free to use, modify, and distribute.
 
 ## Support
 
-- 🐛 Issues: https://github.com/mykinocinemamedia-del/automarket-ai/issues
+- 🐛 Issues: https://github.com/mykinocinemamedia-del/kino-social/issues
 - 📖 Gemini API docs: https://ai.google.dev/gemini-api/docs
 - 📖 Supabase docs: https://supabase.com/docs
 - 📖 Vercel docs: https://vercel.com/docs

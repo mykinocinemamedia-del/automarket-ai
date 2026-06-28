@@ -1,5 +1,5 @@
 /**
- * AutoMarket AI Agent — Conversational campaign generator
+ * Kino Social Agent — Conversational campaign generator
  *
  * Flow:
  * 1. Discovery: AI asks questions to understand the brand
@@ -40,7 +40,7 @@ export interface GeneratedPost {
   pillar: string
 }
 
-const AGENT_SYSTEM_PROMPT = `You are AutoMarket AI Agent, an expert marketing strategist and content creator. Your job is to help the user plan a FULL MONTH of social media content through natural conversation.
+const AGENT_SYSTEM_PROMPT = `You are Kino Social Agent, an expert marketing strategist and content creator. Your job is to help the user plan a FULL MONTH of social media content through natural conversation.
 
 You operate in 3 phases:
 

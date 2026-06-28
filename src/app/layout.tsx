@@ -26,10 +26,10 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
-  title: "AutoMarket AI — 1-Man Marketing Command Center",
-  description: "Personal AI-powered marketing automation hub for solo marketers and small teams. Generate content, schedule posts, track analytics, and automate your social media presence.",
-  keywords: ["marketing automation", "AI marketing", "social media scheduler", "content generation", "AutoMarket AI"],
-  authors: [{ name: "AutoMarket AI" }],
+  title: "Kino Social — Multi-Project Marketing Command Center",
+  description: "Multi-project AI-powered marketing automation hub for agencies, freelancers, and multi-brand businesses. Generate content, schedule posts, track analytics, and automate your social media presence.",
+  keywords: ["marketing automation", "AI marketing", "social media scheduler", "content generation", "Kino Social"],
+  authors: [{ name: "Kino Social" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },

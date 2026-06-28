@@ -33,7 +33,7 @@ export const useAppStore = create<AppState>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
     }),
     {
-      name: 'automarket-ai-store',
+      name: 'kino-social-store',
       partialize: (state) => ({ activeProjectId: state.activeProjectId }),
     }
   )

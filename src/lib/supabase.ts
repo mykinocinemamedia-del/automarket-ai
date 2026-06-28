@@ -15,7 +15,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPA
 export const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
   db: { schema: 'public' },
-  global: { headers: { 'x-application-name': 'automarket-ai' } },
+  global: { headers: { 'x-application-name': 'kino-social' } },
 })
 
 // Type definitions matching our Prisma schema
