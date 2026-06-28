@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAppStore } from '@/lib/store'
+import { supabase, TABLES, type BrandData } from '@/lib/supabase'
 
 export interface BrandData {
   id: string
@@ -13,26 +15,39 @@ export interface BrandData {
   primaryColor?: string | null
   logoUrl?: string | null
   hashtagSets?: string | null
+  projectId?: string | null
 }
 
 /**
- * Fetches the first (primary) brand profile.
- * Returns { brand, loading }.
+ * Fetches the brand profile for the active project.
  */
 export function useBrand() {
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const [brand, setBrand] = useState<BrandData | null>(null)
   const [loading, setLoading] = useState(true)
 
   const refresh = async () => {
+    if (!activeProjectId) {
+      setBrand(null)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await fetch('/api/brand')
-      const data = await res.json()
-      if (data.brands?.[0]) {
-        setBrand(data.brands[0])
-      } else {
-        setBrand(null)
+      const { data, error } = await supabase
+        .from(TABLES.BRAND_PROFILES)
+        .select('*')
+        .eq('projectId', activeProjectId)
+        .order('createdAt', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows found, which is fine
+        throw error
       }
+      setBrand(data || null)
     } catch {
       setBrand(null)
     } finally {
@@ -42,7 +57,7 @@ export function useBrand() {
 
   useEffect(() => {
     refresh()
-  }, [])
+  }, [activeProjectId])
 
   return { brand, brandId: brand?.id, loading, refresh }
 }

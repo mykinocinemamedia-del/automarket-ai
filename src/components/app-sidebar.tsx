@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAppStore, type SectionId } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
+import { ProjectSwitcher } from '@/components/project-switcher'
 import {
   LayoutDashboard,
   Sparkles,
@@ -18,6 +19,7 @@ import {
   Zap,
   Plus,
   MessageSquare,
+  FolderKanban,
 } from 'lucide-react'
 
 interface NavItem {
@@ -29,6 +31,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview & quick stats' },
+  { id: 'projects', label: 'Projects', icon: FolderKanban, description: 'Manage all companies & clients' },
   { id: 'agent', label: 'AI Campaign Agent', icon: MessageSquare, description: 'Chat & auto-generate month' },
   { id: 'studio', label: 'AI Content Studio', icon: Sparkles, description: 'Generate captions & ideas' },
   { id: 'brand', label: 'Brand Memory', icon: Building2, description: 'Brand voice & audience' },
@@ -37,47 +40,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3, description: 'Performance insights' },
   { id: 'autopilot', label: 'Auto-Pilot Rules', icon: Bot, description: 'Automation workflows' },
 ]
-
-function BrandHeader() {
-  const [brand, setBrand] = useState<any>(null)
-
-  useEffect(() => {
-    fetch('/api/brand')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.brands?.length) setBrand(data.brands[0])
-      })
-      .catch(() => {})
-  }, [])
-
-  const initials = brand?.name
-    ? brand.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
-    : 'AM'
-
-  return (
-    <div className="border-b-[3px] border-border bg-stripes-yellow">
-      <div className="flex items-center gap-3 px-3 py-4">
-        <div className="relative">
-          <div className="h-12 w-12 bg-black text-[var(--brutal-yellow)] flex items-center justify-center font-display text-xl border-[3px] border-black">
-            {initials}
-          </div>
-          <span className="absolute -bottom-1 -right-1 h-4 w-4 bg-[var(--brutal-green)] border-[2px] border-black" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-black/60">
-            @automarket.ai
-          </div>
-          <div className="font-display text-xl leading-none text-black truncate">
-            {brand?.name || 'NO BRAND'}
-          </div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-black/60 truncate mt-0.5">
-            {brand?.industry || 'SETUP BRAND →'}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function NavList({ onSelect }: { onSelect?: (s: SectionId) => void }) {
   const activeSection = useAppStore((s) => s.activeSection)
@@ -90,7 +52,7 @@ function NavList({ onSelect }: { onSelect?: (s: SectionId) => void }) {
 
   return (
     <nav className="flex flex-col gap-1.5 px-3 py-3 flex-1 overflow-y-auto scrollbar-thin">
-      {NAV_ITEMS.map((item, index) => {
+      {NAV_ITEMS.map((item) => {
         const Icon = item.icon
         const active = activeSection === item.id
         return (
@@ -126,7 +88,7 @@ function NavList({ onSelect }: { onSelect?: (s: SectionId) => void }) {
 function SidebarFooter() {
   const setSection = useAppStore((s) => s.setSection)
   return (
-    <div className="px-3 py-3 border-t-[3px] border-border space-y-2">
+    <div className="px-3 py-3 border-t-[3px] border-black space-y-2">
       <Button
         size="sm"
         className="w-full justify-start gap-2"
@@ -137,7 +99,7 @@ function SidebarFooter() {
       </Button>
       <div className="flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-widest text-black/60">
         <Zap className="h-3 w-3 text-[var(--brutal-red)]" />
-        <span>AutoMarket AI v1.0</span>
+        <span>AutoMarket AI v2.0</span>
         <Badge variant="outline" className="ml-auto text-[9px] h-5 px-1.5 py-0 bg-[var(--brutal-green)] text-black border-black">LIVE</Badge>
       </div>
     </div>
@@ -154,11 +116,11 @@ function SidebarContent() {
           </div>
           <div>
             <div className="font-display text-2xl leading-none tracking-wide">AUTOMARKET AI</div>
-            <div className="text-[9px] font-bold uppercase tracking-widest text-black/60 mt-0.5">1-MAN MARKETING HUB</div>
+            <div className="text-[9px] font-bold uppercase tracking-widest text-black/60 mt-0.5">MULTI-PROJECT MARKETING HUB</div>
           </div>
         </div>
       </div>
-      <BrandHeader />
+      <ProjectSwitcher />
       <NavList />
       <SidebarFooter />
     </div>

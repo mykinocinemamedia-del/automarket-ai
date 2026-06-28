@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, TABLES, type BrandProfile } from '@/lib/supabase'
+import { supabase, TABLES } from '@/lib/supabase'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const { data, error } = await supabase
-      .from(TABLES.BRAND_PROFILES)
-      .select('*')
-      .order('createdAt', { ascending: false })
+    const { searchParams } = new URL(req.url)
+    const projectId = searchParams.get('projectId')
 
+    let query = supabase.from(TABLES.BRAND_PROFILES).select('*')
+    if (projectId) {
+      query = query.eq('projectId', projectId)
+    }
+    query = query.order('createdAt', { ascending: false })
+
+    const { data, error } = await query
     if (error) throw error
     return NextResponse.json({ brands: data || [] })
   } catch (e: any) {
@@ -19,10 +24,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, tagline, industry, targetAudience, brandVoice, toneKeywords, primaryColor, logoUrl, hashtagSets } = body
+    const { name, tagline, industry, targetAudience, brandVoice, toneKeywords, primaryColor, logoUrl, hashtagSets, projectId } = body
 
     if (!name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
+    }
+    if (!projectId) {
+      return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     }
 
     const { data, error } = await supabase
@@ -37,6 +45,7 @@ export async function POST(req: NextRequest) {
         primaryColor: primaryColor || null,
         logoUrl: logoUrl || null,
         hashtagSets: hashtagSets || null,
+        projectId,
       })
       .select()
       .single()

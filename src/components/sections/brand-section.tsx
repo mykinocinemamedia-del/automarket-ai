@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { Building2, Save, Loader2, Sparkles, Target, MessageSquare, Palette, Hash, Plus, X } from 'lucide-react'
 import { useBrand } from '@/hooks/use-brand'
+import { useAppStore } from '@/lib/store'
 
 interface BrandForm {
   name: string
@@ -37,6 +38,7 @@ const EMPTY: BrandForm = {
 
 export function BrandSection() {
   const { brand, loading, refresh } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const [form, setForm] = useState<BrandForm>(EMPTY)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -78,7 +80,7 @@ export function BrandSection() {
     setSaving(true)
     try {
       const method = editingId ? 'PATCH' : 'POST'
-      const body = editingId ? { id: editingId, ...form } : form
+      const body = editingId ? { id: editingId, ...form } : { ...form, projectId: activeProjectId }
       const res = await fetch('/api/brand', {
         method,
         headers: { 'Content-Type': 'application/json' },

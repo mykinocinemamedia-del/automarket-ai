@@ -5,21 +5,19 @@ import { generateHashtags } from '@/lib/ai'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { topic, platform, count, brandId } = body
+    const { topic, platform, count, projectId } = body
 
     if (!topic || !platform) {
-      return NextResponse.json(
-        { error: 'topic and platform are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'topic and platform are required' }, { status: 400 })
     }
 
     let brandCtx = {}
-    if (brandId) {
+    if (projectId) {
       const { data: brand } = await supabase
         .from(TABLES.BRAND_PROFILES)
         .select('*')
-        .eq('id', brandId)
+        .eq('projectId', projectId)
+        .limit(1)
         .single()
 
       if (brand) {

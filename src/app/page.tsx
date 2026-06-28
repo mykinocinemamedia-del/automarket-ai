@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useAppStore } from '@/lib/store'
 import { AppSidebar } from '@/components/app-sidebar'
 import { DashboardSection } from '@/components/sections/dashboard-section'
+import { ProjectsSection } from '@/components/sections/projects-section'
 import { AgentSection } from '@/components/sections/agent-section'
 import { ContentStudioSection } from '@/components/sections/content-studio-section'
 import { BrandSection } from '@/components/sections/brand-section'
@@ -27,6 +28,7 @@ export default function Home() {
       <AppSidebar />
       <main className="flex-1 min-w-0 overflow-x-hidden">
         {activeSection === 'dashboard' && <DashboardSection />}
+        {activeSection === 'projects' && <ProjectsSection />}
         {activeSection === 'agent' && <AgentSection />}
         {activeSection === 'studio' && <ContentStudioSection />}
         {activeSection === 'brand' && <BrandSection />}

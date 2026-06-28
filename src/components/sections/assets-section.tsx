@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { useAppStore } from '@/lib/store'
 import { Images, Plus, Trash2, Loader2, Search, ExternalLink, Image as ImageIcon, Video, FileText, Music } from 'lucide-react'
 
 interface Asset {
@@ -35,11 +36,17 @@ export function AssetsSection() {
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
 
   const load = async () => {
+    if (!activeProjectId) {
+      setAssets([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch('/api/assets')
+      const res = await fetch(`/api/assets?projectId=${activeProjectId}`)
       const data = await res.json()
       setAssets(data.assets || [])
     } catch (e: any) {
@@ -49,7 +56,7 @@ export function AssetsSection() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [activeProjectId])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this asset?')) return
@@ -187,7 +194,7 @@ export function AssetsSection() {
         </div>
       )}
 
-      <AddAssetDialog open={dialogOpen} onOpenChange={setDialogOpen} onSaved={load} />
+      <AddAssetDialog open={dialogOpen} onOpenChange={setDialogOpen} onSaved={load} projectId={activeProjectId} />
     </div>
   )
 }
@@ -196,10 +203,12 @@ function AddAssetDialog({
   open,
   onOpenChange,
   onSaved,
+  projectId,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
   onSaved: () => void
+  projectId: string | null
 }) {
   const [name, setName] = useState('')
   const [type, setType] = useState('image')
@@ -218,7 +227,7 @@ function AddAssetDialog({
       const res = await fetch('/api/assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, type, url, tags }),
+        body: JSON.stringify({ name, type, url, tags, projectId }),
       })
       if (!res.ok) throw new Error('Failed')
       toast({ title: 'Asset added' })

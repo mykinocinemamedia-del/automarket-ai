@@ -1,7 +1,9 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export type SectionId =
   | 'dashboard'
+  | 'projects'
   | 'agent'
   | 'studio'
   | 'brand'
@@ -13,13 +15,25 @@ export type SectionId =
 interface AppState {
   activeSection: SectionId
   setSection: (s: SectionId) => void
+  activeProjectId: string | null
+  setActiveProject: (id: string | null) => void
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  activeSection: 'dashboard',
-  setSection: (s) => set({ activeSection: s }),
-  sidebarOpen: false,
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-}))
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      activeSection: 'dashboard',
+      setSection: (s) => set({ activeSection: s }),
+      activeProjectId: null,
+      setActiveProject: (id) => set({ activeProjectId: id }),
+      sidebarOpen: false,
+      setSidebarOpen: (open) => set({ sidebarOpen: open }),
+    }),
+    {
+      name: 'automarket-ai-store',
+      partialize: (state) => ({ activeProjectId: state.activeProjectId }),
+    }
+  )
+)

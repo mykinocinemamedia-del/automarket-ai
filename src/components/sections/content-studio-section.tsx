@@ -72,6 +72,7 @@ function CaptionGenerator() {
   const [captions, setCaptions] = useState<string[]>([])
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set())
   const { brandId } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const { toast } = useToast()
   const setSection = useAppStore((s) => s.setSection)
 
@@ -87,7 +88,7 @@ function CaptionGenerator() {
       const res = await fetch('/api/ai/generate-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, platform, additionalInstructions: extra, count, brandId }),
+        body: JSON.stringify({ topic, platform, additionalInstructions: extra, count, projectId: activeProjectId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
@@ -116,6 +117,7 @@ function CaptionGenerator() {
           platform,
           status: 'draft',
           brandId,
+          projectId: activeProjectId,
         }),
       })
       if (!res.ok) throw new Error('Failed')
@@ -308,6 +310,7 @@ function HashtagGenerator() {
   const [loading, setLoading] = useState(false)
   const [hashtags, setHashtags] = useState<string[]>([])
   const { brandId } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const { toast } = useToast()
 
   const generate = async () => {
@@ -321,7 +324,7 @@ function HashtagGenerator() {
       const res = await fetch('/api/ai/generate-hashtags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, platform, brandId }),
+        body: JSON.stringify({ topic, platform, projectId: activeProjectId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -440,6 +443,7 @@ function RepurposeTool() {
   const [loading, setLoading] = useState(false)
   const [variations, setVariations] = useState<Record<string, string>>({})
   const { brandId } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const { toast } = useToast()
 
   const toggle = (id: string) => {
@@ -463,7 +467,7 @@ function RepurposeTool() {
       const res = await fetch('/api/ai/repurpose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceContent: source, targetPlatforms: selectedPlatforms, brandId }),
+        body: JSON.stringify({ sourceContent: source, targetPlatforms: selectedPlatforms, projectId: activeProjectId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -594,6 +598,7 @@ function IdeaGenerator() {
   const [loading, setLoading] = useState(false)
   const [ideas, setIdeas] = useState<string[]>([])
   const { brandId } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const { toast } = useToast()
 
   const generate = async () => {
@@ -604,7 +609,7 @@ function IdeaGenerator() {
       const res = await fetch('/api/ai/ideas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pillarTopics, count: 10, brandId }),
+        body: JSON.stringify({ pillarTopics, count: 10, projectId: activeProjectId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)

@@ -6,12 +6,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const platform = searchParams.get('platform')
-    const brandId = searchParams.get('brandId')
+    const projectId = searchParams.get('projectId')
 
     let query = supabase.from(TABLES.CONTENT_POSTS).select('*')
     if (status) query = query.eq('status', status)
     if (platform) query = query.eq('platform', platform)
-    if (brandId) query = query.eq('brandId', brandId)
+    if (projectId) query = query.eq('projectId', projectId)
     query = query.order('createdAt', { ascending: false }).limit(200)
 
     const { data, error } = await query
@@ -27,10 +27,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { title, body: postBody, platform, status, hashtags, scheduledAt, brandId, assetUrls } = body
+    const { title, body: postBody, platform, status, hashtags, scheduledAt, brandId, assetUrls, projectId } = body
 
     if (!title || !postBody || !platform) {
       return NextResponse.json({ error: 'title, body, platform are required' }, { status: 400 })
+    }
+    if (!projectId) {
+      return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     }
 
     const { data, error } = await supabase
@@ -43,6 +46,7 @@ export async function POST(req: NextRequest) {
         hashtags: hashtags || null,
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         brandId: brandId || null,
+        projectId,
         assetUrls: assetUrls || null,
       })
       .select()

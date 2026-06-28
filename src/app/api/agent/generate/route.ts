@@ -5,17 +5,30 @@ import { generateCampaign, type CampaignContext, type GeneratedPost } from '@/li
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { context, strategy, brandId } = body as {
+    const { context, strategy, projectId } = body as {
       context: CampaignContext
       strategy: string
-      brandId?: string
+      projectId?: string
     }
 
     if (!context || !strategy) {
-      return NextResponse.json(
-        { error: 'context and strategy are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'context and strategy are required' }, { status: 400 })
+    }
+    if (!projectId) {
+      return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
+    }
+
+    // Fetch brand if exists for this project (to get brandId for posts)
+    let brandId: string | null = null
+    const { data: brand } = await supabase
+      .from(TABLES.BRAND_PROFILES)
+      .select('id')
+      .eq('projectId', projectId)
+      .limit(1)
+      .single()
+
+    if (brand) {
+      brandId = brand.id
     }
 
     // Generate all posts
@@ -45,7 +58,8 @@ export async function POST(req: NextRequest) {
         status: 'scheduled',
         hashtags: post.hashtags || null,
         scheduledAt: scheduledDate.toISOString(),
-        brandId: brandId || null,
+        brandId: brandId,
+        projectId,
       }
     })
 

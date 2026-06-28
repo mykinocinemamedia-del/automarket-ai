@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { useAppStore } from '@/lib/store'
 import { Bot, Plus, Trash2, Edit3, Loader2, Zap, Clock, Calendar, RefreshCw, Sparkles, Play, AlertCircle } from 'lucide-react'
 import { PLATFORMS } from '@/lib/platforms'
 
@@ -46,11 +47,17 @@ export function AutopilotSection() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Rule | null>(null)
   const { toast } = useToast()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
 
   const load = async () => {
+    if (!activeProjectId) {
+      setRules([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch('/api/rules')
+      const res = await fetch(`/api/rules?projectId=${activeProjectId}`)
       const data = await res.json()
       setRules(data.rules || [])
     } catch (e: any) {
@@ -60,7 +67,7 @@ export function AutopilotSection() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [activeProjectId])
 
   const toggleActive = async (rule: Rule) => {
     try {
@@ -93,7 +100,7 @@ export function AutopilotSection() {
       const res = await fetch('/api/rules', {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rule),
+        body: JSON.stringify({ ...rule, projectId: activeProjectId }),
       })
       if (!res.ok) throw new Error('Failed')
       toast({ title: rule.id ? 'Rule updated' : 'Rule created' })

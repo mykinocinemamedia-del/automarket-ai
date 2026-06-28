@@ -5,19 +5,20 @@ import { chatWithAgent, type ChatMessage, type CampaignContext } from '@/lib/age
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { messages, brandId } = body as { messages: ChatMessage[]; brandId?: string }
+    const { messages, projectId } = body as { messages: ChatMessage[]; projectId?: string }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
     }
 
-    // If brandId provided, fetch brand context
+    // If projectId provided, fetch brand context
     let brandContext: CampaignContext | undefined
-    if (brandId) {
+    if (projectId) {
       const { data: brand } = await supabase
         .from(TABLES.BRAND_PROFILES)
         .select('*')
-        .eq('id', brandId)
+        .eq('projectId', projectId)
+        .limit(1)
         .single()
 
       if (brand) {

@@ -5,14 +5,15 @@ import { generateContentIdeas } from '@/lib/ai'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { pillarTopics, count, brandId } = body
+    const { pillarTopics, count, projectId } = body
 
     let brandCtx = {}
-    if (brandId) {
+    if (projectId) {
       const { data: brand } = await supabase
         .from(TABLES.BRAND_PROFILES)
         .select('*')
-        .eq('id', brandId)
+        .eq('projectId', projectId)
+        .limit(1)
         .single()
 
       if (brand) {

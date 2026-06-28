@@ -28,6 +28,7 @@ import { PLATFORMS, getStatusMeta, getPlatformMeta, timeAgo, timeUntil, formatDa
 
 export function DashboardSection() {
   const setSection = useAppStore((s) => s.setSection)
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const [stats, setStats] = useState({
     totalPosts: 0,
     scheduled: 0,
@@ -44,11 +45,24 @@ export function DashboardSection() {
   const [rules, setRules] = useState<any[]>([])
 
   useEffect(() => {
+    if (!activeProjectId) {
+      // Reset when no project selected
+      Promise.resolve().then(() => {
+        setStats({ totalPosts: 0, scheduled: 0, published: 0, drafts: 0, totalReach: 0, totalEngagement: 0, activeRules: 0 })
+        setRecentPosts([])
+        setUpcomingPosts([])
+        setAnalytics({})
+        setBrand(null)
+        setRules([])
+      })
+      return
+    }
+
     Promise.all([
-      fetch('/api/posts').then((r) => r.json()),
-      fetch('/api/analytics').then((r) => r.json()),
-      fetch('/api/brand').then((r) => r.json()),
-      fetch('/api/rules').then((r) => r.json()),
+      fetch(`/api/posts?projectId=${activeProjectId}`).then((r) => r.json()),
+      fetch(`/api/analytics?projectId=${activeProjectId}`).then((r) => r.json()),
+      fetch(`/api/brand?projectId=${activeProjectId}`).then((r) => r.json()),
+      fetch(`/api/rules?projectId=${activeProjectId}`).then((r) => r.json()),
     ]).then(([postsData, analyticsData, brandData, rulesData]) => {
       const posts = postsData.posts || []
       const scheduled = posts.filter((p: any) => p.status === 'scheduled')
@@ -84,7 +98,7 @@ export function DashboardSection() {
       setBrand(brandData.brands?.[0] || null)
       setRules(rulesData.rules || [])
     }).catch(() => {})
-  }, [])
+  }, [activeProjectId])
 
   const quickActions = [
     {

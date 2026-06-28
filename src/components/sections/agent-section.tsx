@@ -51,6 +51,7 @@ export function AgentSection() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
   const { brandId } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const setSection = useAppStore((s) => s.setSection)
 
   // Auto-scroll to bottom when messages change
@@ -100,7 +101,7 @@ export function AgentSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: newMessages,
-          brandId,
+          projectId: activeProjectId,
         }),
       })
 
@@ -167,7 +168,7 @@ export function AgentSection() {
         body: JSON.stringify({
           context: { /* extracted from conversation */ },
           strategy: strategyMessages,
-          brandId,
+          projectId: activeProjectId,
         }),
       })
 

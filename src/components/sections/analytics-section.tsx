@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Loader2, BarChart3, TrendingUp, Eye, Heart, MessageCircle, Share2, MousePointerClick, UserPlus } from 'lucide-react'
 import { PLATFORMS, getPlatformMeta } from '@/lib/platforms'
+import { useAppStore } from '@/lib/store'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Legend, AreaChart, Area,
@@ -25,14 +26,22 @@ export function AnalyticsSection() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('overview')
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
 
   useEffect(() => {
-    fetch('/api/analytics/raw')
+    if (!activeProjectId) {
+      Promise.resolve().then(() => {
+        setSnapshots([])
+        setLoading(false)
+      })
+      return
+    }
+    fetch(`/api/analytics/raw?projectId=${activeProjectId}`)
       .then((r) => r.json())
       .then((data) => setSnapshots(data.snapshots || []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [activeProjectId])
 
   // Build chart data: last 14 days, daily reach per platform
   const chartData = buildDailyChartData(snapshots, 14)

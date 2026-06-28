@@ -19,6 +19,17 @@ export const supabase = createClient(supabaseUrl, serviceRoleKey, {
 })
 
 // Type definitions matching our Prisma schema
+export interface Project {
+  id: string
+  name: string
+  type: string // 'company' | 'client' | 'project'
+  description: string | null
+  color: string | null
+  emoji: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface BrandProfile {
   id: string
   name: string
@@ -30,6 +41,7 @@ export interface BrandProfile {
   primaryColor: string | null
   logoUrl: string | null
   hashtagSets: string | null
+  projectId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -44,6 +56,7 @@ export interface ContentPost {
   scheduledAt: string | null
   publishedAt: string | null
   brandId: string | null
+  projectId: string | null
   assetUrls: string | null
   createdAt: string
   updatedAt: string
@@ -56,6 +69,7 @@ export interface Asset {
   url: string
   tags: string | null
   brandId: string | null
+  projectId: string | null
   createdAt: string
 }
 
@@ -68,6 +82,7 @@ export interface AutomationRule {
   config: string
   active: boolean
   lastRunAt: string | null
+  projectId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -77,11 +92,13 @@ export interface AnalyticsSnapshot {
   platform: string
   metric: string
   value: number
+  projectId: string | null
   recordedAt: string
 }
 
 // Table name constants
 export const TABLES = {
+  PROJECTS: 'projects',
   BRAND_PROFILES: 'brand_profiles',
   CONTENT_POSTS: 'content_posts',
   ASSETS: 'assets',

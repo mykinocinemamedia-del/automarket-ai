@@ -5,21 +5,19 @@ import { repurposeContent } from '@/lib/ai'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { sourceContent, targetPlatforms, brandId } = body
+    const { sourceContent, targetPlatforms, projectId } = body
 
     if (!sourceContent || !targetPlatforms?.length) {
-      return NextResponse.json(
-        { error: 'sourceContent and targetPlatforms are required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'sourceContent and targetPlatforms are required' }, { status: 400 })
     }
 
     let brandCtx = {}
-    if (brandId) {
+    if (projectId) {
       const { data: brand } = await supabase
         .from(TABLES.BRAND_PROFILES)
         .select('*')
-        .eq('id', brandId)
+        .eq('projectId', projectId)
+        .limit(1)
         .single()
 
       if (brand) {

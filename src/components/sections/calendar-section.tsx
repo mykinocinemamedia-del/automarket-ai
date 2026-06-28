@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
 import { useBrand } from '@/hooks/use-brand'
+import { useAppStore } from '@/lib/store'
 import { CalendarDays, Plus, Clock, Trash2, Edit3, Loader2, List, LayoutGrid, ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react'
 import { PLATFORMS, POST_STATUSES, getPlatformMeta, getStatusMeta, formatDateTime, timeAgo, timeUntil } from '@/lib/platforms'
 
@@ -35,11 +36,17 @@ export function CalendarSection() {
   const [editing, setEditing] = useState<Post | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
 
   const load = async () => {
+    if (!activeProjectId) {
+      setPosts([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch('/api/posts')
+      const res = await fetch(`/api/posts?projectId=${activeProjectId}`)
       const data = await res.json()
       setPosts(data.posts || [])
     } catch (e: any) {
@@ -49,7 +56,7 @@ export function CalendarSection() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [activeProjectId])
 
   const openNew = () => {
     setEditing(null)
@@ -411,6 +418,7 @@ function PostDialog({
   onSave: (p: Partial<Post>) => void
 }) {
   const { brandId } = useBrand()
+  const activeProjectId = useAppStore((s) => s.activeProjectId)
   const [form, setForm] = useState({
     title: '',
     body: '',
@@ -456,6 +464,7 @@ function PostDialog({
         hashtags: form.hashtags || undefined,
         scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
         brandId,
+        projectId: activeProjectId,
       })
     } finally {
       setSaving(false)
