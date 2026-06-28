@@ -2,8 +2,8 @@
  * Autonomous Trend Agent
  *
  * Monitors trends and suggests content ideas for the active project.
- * Uses Z.AI SDK's web_search capability to find real-time trends,
- * then generates content suggestions tailored to the brand.
+ * Uses Z.AI SDK's web_search if available, otherwise uses AI knowledge
+ * to generate trend-based suggestions.
  */
 
 import ZAI from 'z-ai-web-dev-sdk'
@@ -12,7 +12,18 @@ import { callAI, type BrandContext } from './ai'
 let zaiInstance: any = null
 async function getZAI() {
   if (!zaiInstance) {
-    zaiInstance = await ZAI.create()
+    const ZAI_API_KEY = process.env.ZAI_API_KEY
+    const ZAI_BASE_URL = process.env.ZAI_BASE_URL || 'https://api.z.ai/api/paas/v4'
+
+    if (ZAI_API_KEY) {
+      zaiInstance = new (ZAI as any)({ baseUrl: ZAI_BASE_URL, apiKey: ZAI_API_KEY })
+    } else {
+      try {
+        zaiInstance = await ZAI.create()
+      } catch (e) {
+        zaiInstance = null
+      }
+    }
   }
   return zaiInstance
 }
@@ -37,32 +48,59 @@ export interface ContentSuggestion {
 }
 
 /**
- * Search the web for current trends in the brand's industry
+ * Try to search the web for current trends using Z.AI web_search.
+ * If Z.AI is not configured, fall back to AI-generated trend knowledge.
  */
 export async function searchTrends(
   industry: string,
   audience: string,
   platforms: string[]
 ): Promise<string> {
-  const zai = await getZAI()
+  // Try Z.AI web_search first
+  try {
+    const zai = await getZAI()
+    if (zai) {
+      const query = `What are the current trending topics, hashtags, and content ideas in ${industry} for ${audience} on ${platforms.join(', ')}? Include specific trending hashtags, viral content formats, and emerging conversations. Focus on trends from the last 7 days.`
 
-  const query = `What are the current trending topics, hashtags, and content ideas in ${industry} for ${audience} on ${platforms.join(', ')}? Include specific trending hashtags, viral content formats, and emerging conversations. Focus on trends from the last 7 days.`
+      const completion = await zai.chat.completions.create({
+        messages: [
+          {
+            role: 'assistant',
+            content: 'You are a trend researcher. Use web_search to find current, real-time trends. Return a concise summary of the top 5-8 trending topics relevant to the query. For each trend, include: the topic, why it\'s trending, and which platforms it\'s popular on. Format as a simple list.',
+          },
+          { role: 'user', content: query },
+        ],
+        thinking: { type: 'disabled' },
+        temperature: 0.7,
+        max_tokens: 2000,
+        tools: [{ type: 'web_search' }],
+      })
 
-  const completion = await zai.chat.completions.create({
-    messages: [
-      {
-        role: 'assistant',
-        content: 'You are a trend researcher. Use web_search to find current, real-time trends. Return a concise summary of the top 5-8 trending topics relevant to the query. For each trend, include: the topic, why it\'s trending, and which platforms it\'s popular on. Format as a simple list.',
-      },
-      { role: 'user', content: query },
-    ],
-    thinking: { type: 'disabled' },
-    temperature: 0.7,
-    max_tokens: 2000,
-    tools: [{ type: 'web_search' }],
-  })
+      const result = completion.choices?.[0]?.message?.content || ''
+      if (result) return result
+    }
+  } catch (e) {
+    console.log('Z.AI web_search not available, falling back to AI knowledge:', e)
+  }
 
-  return completion.choices?.[0]?.message?.content || ''
+  // Fallback: Use AI knowledge to generate trends
+  const systemPrompt = `You are a trend researcher for social media marketing. Based on your knowledge of current trends (as of 2025-2026), list the top 6-8 trending topics, hashtags, and content formats relevant to the query.
+
+For each trend, include:
+- The topic/hashtag
+- Why it's trending
+- Which platforms it works best on
+- Momentum (rising, peak, or stable)
+
+Format as a simple numbered list.`
+
+  const userPrompt = `Industry: ${industry}
+Target audience: ${audience}
+Platforms: ${platforms.join(', ')}
+
+What are the current trending topics, hashtags, and content ideas in this space?`
+
+  return await callAI(systemPrompt, userPrompt, { temperature: 0.7, maxTokens: 2000 })
 }
 
 /**
@@ -117,7 +155,6 @@ Rules:
 
   try {
     const suggestions = JSON.parse(jsonStr) as ContentSuggestion[]
-    // Add unique IDs
     return suggestions.map((s, i) => ({
       ...s,
       id: `suggestion-${Date.now()}-${i}`,
@@ -155,7 +192,7 @@ export async function runTrendCycle(opts: {
 }> {
   const { brandCtx, platforms, count = 5 } = opts
 
-  // Step 1: Search for trends
+  // Step 1: Search for trends (web search or AI knowledge)
   const trendData = await searchTrends(
     brandCtx.industry || 'general business',
     brandCtx.targetAudience || 'general audience',

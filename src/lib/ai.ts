@@ -32,7 +32,18 @@ const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models
 let zaiInstance: any = null
 async function getZAI() {
   if (!zaiInstance) {
-    zaiInstance = await ZAI.create()
+    // The Z.AI SDK reads from .z-ai-config file or we can construct directly
+    // Try to create with env vars first, fall back to SDK's create() which reads config file
+    const ZAI_API_KEY = process.env.ZAI_API_KEY
+    const ZAI_BASE_URL = process.env.ZAI_BASE_URL || 'https://api.z.ai/api/paas/v4'
+
+    if (ZAI_API_KEY) {
+      // Construct directly with env vars
+      zaiInstance = new (ZAI as any)({ baseUrl: ZAI_BASE_URL, apiKey: ZAI_API_KEY })
+    } else {
+      // Fall back to SDK's create() which reads .z-ai-config
+      zaiInstance = await ZAI.create()
+    }
   }
   return zaiInstance
 }
